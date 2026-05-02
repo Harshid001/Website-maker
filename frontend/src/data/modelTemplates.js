@@ -1,0 +1,63 @@
+export const modelTemplates = [
+  {
+    id: 1,
+    name: 'Low Poly Tree',
+    category: 'nature',
+    description: 'Simple low-poly tree model with basic textures.',
+    thumbnail: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=400',
+    geometry: 'cone',
+    color: '#22c55e',
+  },
+  {
+    id: 2,
+    name: 'Basic House',
+    category: 'architecture',
+    description: 'Simple house model with walls and roof.',
+    thumbnail: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=400',
+    geometry: 'box',
+    color: '#f59e0b',
+  },
+  {
+    id: 3,
+    name: 'Geometric Sphere',
+    category: 'abstract',
+    description: 'Wireframe sphere with glowing edges.',
+    thumbnail: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400',
+    geometry: 'sphere',
+    color: '#6366f1',
+  },
+  {
+    id: 4,
+    name: 'Rotating Cube',
+    category: 'abstract',
+    description: 'Colorful rotating cube with gradient faces.',
+    thumbnail: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=400',
+    geometry: 'box',
+    color: '#ec4899',
+  },
+  {
+    id: 5,
+    name: 'Mountain Terrain',
+    category: 'nature',
+    description: 'Low-poly mountain landscape with snow peaks.',
+    thumbnail: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400',
+    geometry: 'plane',
+    color: '#14b8a6',
+  },
+  {
+    id: 6,
+    name: 'Product Box',
+    category: 'product',
+    description: '3D product packaging box for mockups.',
+    thumbnail: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=400',
+    geometry: 'box',
+    color: '#f97316',
+  },
+];
+
+export const modelCategories = [
+  { id: 'nature', name: 'Nature', icon: '🌳' },
+  { id: 'architecture', name: 'Architecture', icon: '🏠' },
+  { id: 'abstract', name: 'Abstract', icon: '🔮' },
+  { id: 'product', name: 'Product', icon: '📦' },
+];
