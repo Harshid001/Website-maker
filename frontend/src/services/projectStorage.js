@@ -72,6 +72,7 @@ export const normalizeProject = (project = {}) => {
     businessDetails: project.businessDetails || {},
     pages,
     currentPageId: currentPage?.id,
+    nodesMap: project.nodesMap || {},
     nodes: project.nodes || {},
     interactions: project.interactions || [],
     routes: project.routes || [],
@@ -180,7 +181,7 @@ export const getPublishedSite = (slug) => {
 };
 
 export const createBlankProject = () => {
-  const demoSeedVersion = 5;
+  const demoSeedVersion = 6;
   const projects = listProjects();
   const existing = projects.find((project) => project.id === 'demo-website-project');
   if (existing?.settings?.demoSeedVersion === demoSeedVersion) return existing;

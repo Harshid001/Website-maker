@@ -1,13 +1,18 @@
 import React, { useEffect } from 'react';
 import { useBuilderStore } from '../../store/builderStore';
-import SectionRenderer from './SectionRenderer';
+import CleanRenderer from './CleanRenderer';
 
 export default function PublishedWebsiteView({ device = 'desktop', runtimeMode = 'published' }) {
-  const { project, sections, setActiveDevice } = useBuilderStore();
+  const { project, currentPage, nodesMap, setActiveDevice } = useBuilderStore();
 
   useEffect(() => {
     setActiveDevice(device);
   }, [device, setActiveDevice]);
+
+  // Extract root nodes for the current page
+  const rootNodeIds = Object.values(nodesMap)
+    .filter(node => node.parentId === currentPage?.id)
+    .map(node => node.id);
 
   return (
     <div
@@ -18,8 +23,8 @@ export default function PublishedWebsiteView({ device = 'desktop', runtimeMode =
         fontFamily: project?.theme?.fonts?.body || 'Inter',
       }}
     >
-      {sections.map((section, index) => (
-        <SectionRenderer key={section.id} section={section} index={index} readonly device={device} runtimeMode={runtimeMode} />
+      {rootNodeIds.map((nodeId) => (
+        <CleanRenderer key={nodeId} nodeId={nodeId} nodesMap={nodesMap} />
       ))}
     </div>
   );

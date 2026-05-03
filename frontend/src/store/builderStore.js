@@ -9,6 +9,8 @@ import { deepClone } from '../utils/deepClone';
 import { createId, rekeyTree } from '../utils/ids';
 import { createInteraction, runInteraction as resolveAndRunInteraction, validateInteractions } from '../utils/interactionResolver';
 import { slugify } from '../utils/slugify';
+import * as nodeOps from '../utils/nodeOperations';
+import { createNode, NODE_TYPES, LAYOUT_MODES, RESIZABLE_NODE_TYPES, CONTAINER_NODE_TYPES, TEXT_NODE_TYPES } from '../data/nodeSchema';
 
 const BuilderStoreContext = createContext(null);
 
@@ -139,6 +141,8 @@ export const BuilderProvider = ({ projectId, children }) => {
   const [zoom, setZoomState] = useState(100);
   const [fitRequestId, setFitRequestId] = useState(0);
   const [connectionDraft, setConnectionDraft] = useState(null);
+  const [nodesMap, setNodesMap] = useState({});
+  const [editingNodeId, setEditingNodeId] = useState(null);
 
   const setZoom = useCallback((value) => {
     setZoomState((current) => {
@@ -186,15 +190,33 @@ export const BuilderProvider = ({ projectId, children }) => {
     setSelectedInteractionId(null);
     setSelectedNodeIds([]);
     setConnectionDraft(null);
+    setEditingNodeId(null);
     setHistory([]);
     setFuture([]);
     setLastSavedAt(loaded.updatedAt || null);
+    // Initialize nodesMap: use existing or migrate from legacy
+    const initNodes = loaded.nodesMap && Object.keys(loaded.nodesMap).length > 0
+      ? loaded.nodesMap
+      : nodeOps.migrateFromLegacy(loaded.pages || []);
+    setNodesMap(initNodes);
     return loaded;
   }, [showToast]);
 
   useEffect(() => {
     loadProject(projectId);
   }, [projectId, loadProject]);
+
+  // Sync nodesMap back into project on every commit
+  const commitNodesMap = useCallback((updater, options = {}) => {
+    setNodesMap((currentMap) => {
+      const nextMap = typeof updater === 'function' ? updater(currentMap) : updater;
+      if (!options.skipHistory) {
+        setHistory((items) => [...items.slice(-39), { type: 'nodes', data: currentMap }]);
+        setFuture([]);
+      }
+      return nextMap;
+    });
+  }, []);
 
   const commitProject = useCallback((updater, options = {}) => {
     setProjectState((current) => {
@@ -281,8 +303,10 @@ export const BuilderProvider = ({ projectId, children }) => {
 
   const selectNode = useCallback((nodeId, options = {}) => {
     if (!nodeId) return clearSelection();
+    
     const section = sections.find((item) => item.id === nodeId);
     const sectionWithElement = sections.find((item) => (item.elements || []).some((element) => element.id === nodeId));
+    
     if (options.multi) {
       setSelectedNodeIds((ids) => (ids.includes(nodeId) ? ids.filter((id) => id !== nodeId) : [...ids, nodeId]));
     } else {
@@ -1031,6 +1055,194 @@ export const BuilderProvider = ({ projectId, children }) => {
     });
   }, [future]);
 
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // NODE-BASED ACTIONS (new system)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  const getNode = useCallback((nodeId) => nodesMap[nodeId] || null, [nodesMap]);
+
+  const getSelectedNode = useMemo(() => {
+    if (selectedNodeIds.length === 1) return nodesMap[selectedNodeIds[0]] || null;
+    return null;
+  }, [nodesMap, selectedNodeIds]);
+
+  const getSelectedNodes = useMemo(() =>
+    selectedNodeIds.map((id) => nodesMap[id]).filter(Boolean),
+  [nodesMap, selectedNodeIds]);
+
+  const currentPageNodes = useMemo(() => {
+    if (!currentPage) return [];
+    return nodeOps.getPageRootNodes(nodesMap, currentPage.id);
+  }, [currentPage, nodesMap]);
+
+  const addNodeToMap = useCallback((parentId, nodeData, index) => {
+    let result;
+    commitNodesMap((map) => {
+      result = nodeOps.addNode(map, parentId, nodeData, index);
+      return result.nodesMap;
+    });
+    if (result?.nodeId) {
+      setSelectedNodeIds([result.nodeId]);
+      showToast(`${nodeData.name || nodeData.type || 'Node'} added.`, 'success');
+    }
+    return result?.nodeId;
+  }, [commitNodesMap, showToast]);
+
+  const updateNodeInMap = useCallback((nodeId, patch) => {
+    commitNodesMap((map) => nodeOps.updateNode(map, nodeId, patch));
+  }, [commitNodesMap]);
+
+  const updateNodeContentInMap = useCallback((nodeId, content) => {
+    commitNodesMap((map) => nodeOps.updateNodeContent(map, nodeId, content));
+  }, [commitNodesMap]);
+
+  const updateNodeStylesInMap = useCallback((nodeId, styles) => {
+    commitNodesMap((map) => nodeOps.updateNodeStyles(map, nodeId, styles));
+  }, [commitNodesMap]);
+
+  const updateNodePropsInMap = useCallback((nodeId, props) => {
+    commitNodesMap((map) => nodeOps.updateNodeProps(map, nodeId, props));
+  }, [commitNodesMap]);
+
+  const updateNodeLayoutInMap = useCallback((nodeId, layout) => {
+    commitNodesMap((map) => nodeOps.updateNodeLayout(map, nodeId, layout));
+  }, [commitNodesMap]);
+
+  const updateNodeResponsiveInMap = useCallback((nodeId, device, styles) => {
+    commitNodesMap((map) => nodeOps.updateNodeResponsive(map, nodeId, device, styles));
+  }, [commitNodesMap]);
+
+  const updateNodeAnimationInMap = useCallback((nodeId, animation) => {
+    commitNodesMap((map) => nodeOps.updateNodeAnimation(map, nodeId, animation));
+  }, [commitNodesMap]);
+
+  const deleteNodeFromMap = useCallback((nodeId) => {
+    commitNodesMap((map) => nodeOps.deleteNode(map, nodeId));
+    setSelectedNodeIds((ids) => ids.filter((id) => id !== nodeId));
+    showToast('Deleted.', 'success');
+  }, [commitNodesMap, showToast]);
+
+  const deleteNodesFromMap = useCallback((nodeIds) => {
+    commitNodesMap((map) => nodeOps.deleteNodes(map, nodeIds));
+    setSelectedNodeIds([]);
+    showToast(`${nodeIds.length} items deleted.`, 'success');
+  }, [commitNodesMap, showToast]);
+
+  const duplicateNodeInMap = useCallback((nodeId) => {
+    let newId = null;
+    commitNodesMap((map) => {
+      const result = nodeOps.duplicateNode(map, nodeId);
+      newId = result.newNodeId;
+      return result.nodesMap;
+    });
+    if (newId) {
+      setSelectedNodeIds([newId]);
+      showToast('Duplicated.', 'success');
+    }
+    return newId;
+  }, [commitNodesMap, showToast]);
+
+  const moveNodeInMap = useCallback((nodeId, newParentId, newIndex) => {
+    commitNodesMap((map) => nodeOps.moveNode(map, nodeId, newParentId, newIndex));
+  }, [commitNodesMap]);
+
+  const dragNodeInMap = useCallback((nodeId, position) => {
+    commitNodesMap((map) => nodeOps.dragNode(map, nodeId, position), { skipHistory: true });
+  }, [commitNodesMap]);
+
+  const resizeNodeInMap = useCallback((nodeId, size) => {
+    commitNodesMap((map) => nodeOps.resizeNode(map, nodeId, size), { skipHistory: true });
+  }, [commitNodesMap]);
+
+  const lockNodeInMap = useCallback((nodeId) => {
+    commitNodesMap((map) => nodeOps.lockNode(map, nodeId));
+    const node = nodesMap[nodeId];
+    showToast(node?.locked ? 'Unlocked.' : 'Locked.', 'success');
+  }, [commitNodesMap, nodesMap, showToast]);
+
+  const hideNodeInMap = useCallback((nodeId) => {
+    commitNodesMap((map) => nodeOps.hideNode(map, nodeId));
+    const node = nodesMap[nodeId];
+    showToast(node?.hidden ? 'Shown.' : 'Hidden.', 'success');
+  }, [commitNodesMap, nodesMap, showToast]);
+
+  const groupNodesInMap = useCallback((nodeIds) => {
+    let gid = null;
+    commitNodesMap((map) => {
+      const result = nodeOps.groupNodes(map, nodeIds);
+      gid = result.groupId;
+      return result.nodesMap;
+    });
+    if (gid) {
+      setSelectedNodeIds([gid]);
+      showToast('Grouped.', 'success');
+    }
+    return gid;
+  }, [commitNodesMap, showToast]);
+
+  const ungroupNodeInMap = useCallback((groupNodeId) => {
+    const group = nodesMap[groupNodeId];
+    if (!group || group.type !== NODE_TYPES.GROUP) {
+      showToast('Select a group to ungroup.', 'error');
+      return;
+    }
+    const childIds = group.children || [];
+    commitNodesMap((map) => nodeOps.ungroupNode(map, groupNodeId));
+    setSelectedNodeIds(childIds);
+    showToast('Ungrouped.', 'success');
+  }, [commitNodesMap, nodesMap, showToast]);
+
+  const bringToFrontInMap = useCallback((nodeId) => {
+    commitNodesMap((map) => nodeOps.bringToFront(map, nodeId));
+  }, [commitNodesMap]);
+
+  const sendToBackInMap = useCallback((nodeId) => {
+    commitNodesMap((map) => nodeOps.sendToBack(map, nodeId));
+  }, [commitNodesMap]);
+
+  const alignNodesInMap = useCallback((direction, boundingBoxes) => {
+    if (selectedNodeIds.length < 2) return showToast('Select multiple nodes to align.', 'error');
+    commitNodesMap((map) => nodeOps.alignNodes(map, selectedNodeIds, direction, boundingBoxes));
+    showToast(`Aligned ${direction}.`, 'success');
+  }, [commitNodesMap, selectedNodeIds, showToast]);
+
+  const distributeNodesInMap = useCallback((direction, boundingBoxes) => {
+    if (selectedNodeIds.length < 3) return showToast('Select 3+ nodes to distribute.', 'error');
+    commitNodesMap((map) => nodeOps.distributeNodes(map, selectedNodeIds, direction, boundingBoxes));
+    showToast(`Distributed ${direction}.`, 'success');
+  }, [commitNodesMap, selectedNodeIds, showToast]);
+
+  const copyNodesInMap = useCallback(() => {
+    if (!selectedNodeIds.length) return showToast('Select nodes to copy.', 'error');
+    const items = selectedNodeIds.map((id) => nodesMap[id]).filter(Boolean);
+    setClipboard({ kind: 'nodes', items: deepClone(items), nodeIds: [...selectedNodeIds] });
+    showToast(`${items.length} node(s) copied.`, 'success');
+  }, [nodesMap, selectedNodeIds, showToast]);
+
+  const pasteNodesInMap = useCallback(() => {
+    if (!clipboard?.nodeIds?.length) return showToast('Clipboard is empty.', 'error');
+    for (const item of clipboard.items || []) {
+      const cloned = { ...deepClone(item), id: createId('node') };
+      const parentId = item.parentId || currentPage?.id;
+      if (parentId) {
+        commitNodesMap((map) => nodeOps.addNode(map, parentId, cloned).nodesMap);
+      }
+    }
+    showToast('Pasted.', 'success');
+  }, [clipboard, commitNodesMap, currentPage, showToast]);
+
+  // Derived: get node tree for current page
+  const nodeTree = useMemo(() => {
+    if (!currentPage) return null;
+    return nodeOps.getNodeTree(nodesMap, currentPage.id);
+  }, [currentPage, nodesMap]);
+
+  // Derived: flat list for layers panel
+  const flatNodeList = useMemo(() => {
+    if (!currentPage) return [];
+    return nodeOps.flattenTree(nodesMap, currentPage.id);
+  }, [currentPage, nodesMap]);
+
   const value = useMemo(() => ({
     project,
     currentPage,
@@ -1152,6 +1364,40 @@ export const BuilderProvider = ({ projectId, children }) => {
     setHomePage,
     switchPage,
     showToast,
+    nodesMap,
+    editingNodeId,
+    setEditingNodeId,
+    getNode,
+    getSelectedNode,
+    getSelectedNodes,
+    currentPageNodes,
+    nodeTree,
+    flatNodeList,
+    addNodeToMap,
+    updateNodeInMap,
+    updateNodeContentInMap,
+    updateNodeStylesInMap,
+    updateNodePropsInMap,
+    updateNodeLayoutInMap,
+    updateNodeResponsiveInMap,
+    updateNodeAnimationInMap,
+    deleteNodeFromMap,
+    deleteNodesFromMap,
+    duplicateNodeInMap,
+    moveNodeInMap,
+    dragNodeInMap,
+    resizeNodeInMap,
+    lockNodeInMap,
+    hideNodeInMap,
+    groupNodesInMap,
+    ungroupNodeInMap,
+    bringToFrontInMap,
+    sendToBackInMap,
+    alignNodesInMap,
+    distributeNodesInMap,
+    copyNodesInMap,
+    pasteNodesInMap,
+    commitNodesMap,
   }), [
     activeDevice, activeLeftTool, activeTool, addAsset, addElement, addInteraction, addPage, addSection, alignSelected, applyTemplate, applyTheme,
     builderMode, cancelConnection, canvasPan, clearSelection, clipboard, closeContextMenu, completeConnection, connectionDraft, contextMenu, copySelected, currentPage, deleteElement, deleteInteraction,
@@ -1165,6 +1411,10 @@ export const BuilderProvider = ({ projectId, children }) => {
     resetZoom, rightPanelCollapsed, setZoom, setZoomMode, ungroupSelected, zoom, zoomIn, zoomOut,
     undo, updateConnectionDrag, updateElement, updateInteraction, updateProjectSEO, updateProjectMeta, updateProjectSettings, updateSection, updateSelectedAnimation,
     updateSelectedContent, updateSelectedProps, updateSelectedResponsive, updateSelectedStyles, validateRoutes,
+    nodesMap, editingNodeId, getNode, getSelectedNode, getSelectedNodes, currentPageNodes, nodeTree, flatNodeList,
+    addNodeToMap, updateNodeInMap, updateNodeContentInMap, updateNodeStylesInMap, updateNodePropsInMap, updateNodeLayoutInMap, updateNodeResponsiveInMap, updateNodeAnimationInMap,
+    deleteNodeFromMap, deleteNodesFromMap, duplicateNodeInMap, moveNodeInMap, dragNodeInMap, resizeNodeInMap, lockNodeInMap, hideNodeInMap, groupNodesInMap, ungroupNodeInMap,
+    bringToFrontInMap, sendToBackInMap, alignNodesInMap, distributeNodesInMap, copyNodesInMap, pasteNodesInMap, commitNodesMap,
   ]);
 
   return React.createElement(BuilderStoreContext.Provider, { value }, children);

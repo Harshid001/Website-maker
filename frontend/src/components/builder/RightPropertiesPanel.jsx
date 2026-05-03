@@ -15,9 +15,12 @@ import AdvancedProperties from './properties/AdvancedProperties';
 import AccessibilityProperties from './properties/AccessibilityProperties';
 import ExportCodeProperties from './properties/ExportCodeProperties';
 import InteractionProperties from './prototype/InteractionProperties';
+import MultiSelectionProperties from './properties/MultiSelectionProperties';
 
 export default function RightPropertiesPanel() {
-  const { builderMode, selectedItem, selectedInteraction } = useBuilderStore();
+  const { builderMode, getSelectedNode, selectedNodeIds, selectedInteraction } = useBuilderStore();
+  const node = getSelectedNode;
+  const isMultiSelect = selectedNodeIds.length > 1;
 
   return (
     <aside className="w-[360px] shrink-0 overflow-y-auto border-l border-slate-800 bg-slate-900 custom-scrollbar">
@@ -28,7 +31,7 @@ export default function RightPropertiesPanel() {
         </div>
         <SlidersHorizontal size={18} className="text-slate-500" />
       </div>
-      {!selectedItem && !selectedInteraction && (
+      {!node && !selectedInteraction && !isMultiSelect && (
         <div className="border-b border-slate-800 p-5">
           <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950 p-4 text-xs leading-5 text-slate-500">
             Page frame settings are shown below. Select a section or element on the canvas to edit layout, content, style, media, animation, and responsive settings.
@@ -36,9 +39,16 @@ export default function RightPropertiesPanel() {
         </div>
       )}
       {selectedInteraction && <InteractionProperties />}
-      {!selectedInteraction && <SelectionProperties />}
-      {builderMode === 'prototype' && selectedItem && <InteractionProperties />}
-      {selectedItem && !selectedInteraction && (
+      {!selectedInteraction && !isMultiSelect && <SelectionProperties />}
+      {builderMode === 'prototype' && node && !isMultiSelect && <InteractionProperties />}
+      
+      {isMultiSelect && (
+        <div className="p-5">
+          <MultiSelectionProperties />
+        </div>
+      )}
+
+      {node && !selectedInteraction && !isMultiSelect && (
         <>
           <LayoutProperties />
           <TextProperties />
@@ -53,7 +63,7 @@ export default function RightPropertiesPanel() {
           <AccessibilityProperties />
         </>
       )}
-      {!selectedItem && !selectedInteraction && <SEOProperties />}
+      {!node && !selectedInteraction && !isMultiSelect && <SEOProperties />}
       <ExportCodeProperties />
     </aside>
   );

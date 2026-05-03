@@ -2,51 +2,77 @@ import React from 'react';
 import { useBuilderStore } from '../../../store/builderStore';
 import { PropertyGroup, SelectInput, TextInput } from './PropertyControls';
 
-const displayOptions = ['block', 'flex', 'grid'];
+const positionOptions = ['flow', 'free', 'flex-row', 'flex-column', 'grid'];
 const alignOptions = ['left', 'center', 'right'];
 const justifyOptions = ['flex-start', 'center', 'flex-end', 'space-between'];
 
 export default function LayoutProperties() {
-  const { selectedItem, updateSelectedStyles } = useBuilderStore();
-  const styles = selectedItem?.styles || {};
-  const update = (key) => (value) => updateSelectedStyles({ [key]: value });
+  const { getSelectedNode, updateNodeStylesInMap, updateNodeLayoutInMap } = useBuilderStore();
+  
+  const node = getSelectedNode;
+  if (!node) return null;
+
+  const layout = node.layout || {};
+  const styles = node.styles || {};
+
+  const updateStyle = (key) => (value) => updateNodeStylesInMap(node.id, { [key]: value });
+  const updateLayout = (key) => (value) => updateNodeLayoutInMap(node.id, { [key]: value });
 
   return (
     <PropertyGroup title="Layout">
-      <div className="grid grid-cols-2 gap-2">
-        <TextInput label="Width" value={styles.width} onChange={update('width')} placeholder="100%" />
-        <TextInput label="Height" value={styles.height} onChange={update('height')} placeholder="auto" />
-        <TextInput label="Position X" value={styles.left} onChange={update('left')} placeholder="0px" />
-        <TextInput label="Position Y" value={styles.top} onChange={update('top')} placeholder="0px" />
-        <TextInput label="Max width" value={styles.maxWidth} onChange={update('maxWidth')} placeholder="1200px" />
-        <TextInput label="Min height" value={styles.minHeight} onChange={update('minHeight')} placeholder="320px" />
+      <SelectInput label="Position Mode" value={layout.positionMode || 'flow'} onChange={updateLayout('positionMode')} options={positionOptions} />
+
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        <TextInput label="Width" value={layout.width || 'auto'} onChange={updateLayout('width')} placeholder="100%" />
+        <TextInput label="Height" value={layout.height || 'auto'} onChange={updateLayout('height')} placeholder="auto" />
+        
+        {layout.positionMode === 'free' && (
+          <>
+            <TextInput label="X Pos" value={layout.x || 0} onChange={(v) => updateLayout('x')(parseInt(v, 10) || 0)} placeholder="0" />
+            <TextInput label="Y Pos" value={layout.y || 0} onChange={(v) => updateLayout('y')(parseInt(v, 10) || 0)} placeholder="0" />
+          </>
+        )}
+        
+        <TextInput label="Z-index" value={layout.zIndex || 'auto'} onChange={updateLayout('zIndex')} placeholder="1" />
+        <TextInput label="Rotation" value={layout.rotation || 0} onChange={(v) => updateLayout('rotation')(parseInt(v, 10) || 0)} placeholder="0" />
       </div>
-      <div className="rounded-2xl border border-slate-800 bg-slate-950 p-3">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">Spacing</p>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-950 p-3 mt-3">
+        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">Spacing (Margin/Padding)</p>
+        <div className="grid grid-cols-2 gap-2 mb-2">
+          <TextInput label="Margin" value={styles.margin || ''} onChange={updateStyle('margin')} placeholder="0" />
+          <TextInput label="Padding" value={styles.padding || ''} onChange={updateStyle('padding')} placeholder="0" />
+        </div>
         <div className="grid grid-cols-4 gap-2">
-          <TextInput label="MT" value={styles.marginTop} onChange={update('marginTop')} />
-          <TextInput label="MR" value={styles.marginRight} onChange={update('marginRight')} />
-          <TextInput label="MB" value={styles.marginBottom} onChange={update('marginBottom')} />
-          <TextInput label="ML" value={styles.marginLeft} onChange={update('marginLeft')} />
-          <TextInput label="PT" value={styles.paddingTop} onChange={update('paddingTop')} />
-          <TextInput label="PR" value={styles.paddingRight} onChange={update('paddingRight')} />
-          <TextInput label="PB" value={styles.paddingBottom} onChange={update('paddingBottom')} />
-          <TextInput label="PL" value={styles.paddingLeft} onChange={update('paddingLeft')} />
+          <TextInput label="MT" value={styles.marginTop || ''} onChange={updateStyle('marginTop')} />
+          <TextInput label="MR" value={styles.marginRight || ''} onChange={updateStyle('marginRight')} />
+          <TextInput label="MB" value={styles.marginBottom || ''} onChange={updateStyle('marginBottom')} />
+          <TextInput label="ML" value={styles.marginLeft || ''} onChange={updateStyle('marginLeft')} />
+          <TextInput label="PT" value={styles.paddingTop || ''} onChange={updateStyle('paddingTop')} />
+          <TextInput label="PR" value={styles.paddingRight || ''} onChange={updateStyle('paddingRight')} />
+          <TextInput label="PB" value={styles.paddingBottom || ''} onChange={updateStyle('paddingBottom')} />
+          <TextInput label="PL" value={styles.paddingLeft || ''} onChange={updateStyle('paddingLeft')} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <TextInput label="Margin" value={styles.margin} onChange={update('margin')} placeholder="0" />
-        <TextInput label="Padding" value={styles.padding} onChange={update('padding')} placeholder="64px" />
-        <TextInput label="Gap" value={styles.gap} onChange={update('gap')} placeholder="24px" />
-        <TextInput label="Z-index" value={styles.zIndex} onChange={update('zIndex')} placeholder="1" />
+
+      <div className="mt-3 flex flex-col gap-2">
+        {['flex-row', 'flex-column', 'grid'].includes(layout.positionMode) && (
+          <TextInput label="Gap" value={layout.gap || ''} onChange={updateLayout('gap')} placeholder="24px" />
+        )}
+        
+        {layout.positionMode === 'grid' && (
+          <TextInput label="Grid columns" value={layout.gridTemplateColumns || ''} onChange={updateLayout('gridTemplateColumns')} placeholder="repeat(3, 1fr)" />
+        )}
+        
+        {['flex-row', 'flex-column'].includes(layout.positionMode) && (
+          <>
+            <SelectInput label="Justify content" value={layout.justifyContent || 'flex-start'} onChange={updateLayout('justifyContent')} options={justifyOptions} />
+            <SelectInput label="Align items" value={layout.alignItems || 'stretch'} onChange={updateLayout('alignItems')} options={['stretch', 'flex-start', 'center', 'flex-end']} />
+          </>
+        )}
+        
+        <SelectInput label="Text align" value={styles.textAlign || 'left'} onChange={updateStyle('textAlign')} options={alignOptions} />
       </div>
-      <SelectInput label="Display" value={styles.display || 'block'} onChange={update('display')} options={displayOptions} />
-      <SelectInput label="Flex direction" value={styles.flexDirection || 'row'} onChange={update('flexDirection')} options={['row', 'column', 'row-reverse', 'column-reverse']} />
-      <TextInput label="Grid columns" value={styles.gridTemplateColumns || ''} onChange={update('gridTemplateColumns')} placeholder="repeat(3, 1fr)" />
-      <SelectInput label="Justify content" value={styles.justifyContent || 'flex-start'} onChange={update('justifyContent')} options={justifyOptions} />
-      <SelectInput label="Align items" value={styles.alignItems || 'stretch'} onChange={update('alignItems')} options={['stretch', 'flex-start', 'center', 'flex-end']} />
-      <SelectInput label="Text align" value={styles.textAlign || 'left'} onChange={update('textAlign')} options={alignOptions} />
-      <SelectInput label="Position" value={styles.position || 'relative'} onChange={update('position')} options={['relative', 'static', 'absolute', 'sticky']} />
     </PropertyGroup>
   );
 }

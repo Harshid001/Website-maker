@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   SendToBack,
+  BringToFront,
   SquareStack,
   Trash2,
   Unlock,
@@ -32,22 +33,25 @@ export default function ContextMenu() {
   const {
     contextMenu,
     closeContextMenu,
-    duplicateSelected,
-    deleteSelected,
-    lockSelected,
-    hideSelected,
-    copySelected,
-    pasteSelected,
-    groupSelected,
-    ungroupSelected,
-    startConnection,
-    selectedItem,
-    currentPage,
+    selectedNodeIds,
+    getSelectedNode,
+    duplicateNodeInMap,
+    deleteNodesFromMap,
+    lockNodeInMap,
+    hideNodeInMap,
+    copyNodesInMap,
+    pasteNodesInMap,
+    groupNodesInMap,
+    ungroupNodeInMap,
+    bringToFrontInMap,
+    sendToBackInMap,
     showToast,
   } = useBuilderStore();
 
   if (!contextMenu) return null;
   const position = contextMenu.position || { x: 0, y: 0 };
+  const targetId = contextMenu.target?.id || selectedNodeIds[0];
+  const targetNode = getSelectedNode;
 
   const run = (action) => {
     action?.();
@@ -61,21 +65,40 @@ export default function ContextMenu() {
       onContextMenu={(event) => event.preventDefault()}
     >
       <MenuItem icon={Pencil} label="Edit" onClick={() => run(() => showToast('Double click text or use the right inspector to edit.'))} />
-      <MenuItem icon={Copy} label="Copy" onClick={() => run(copySelected)} />
-      <MenuItem icon={Plus} label="Paste" onClick={() => run(pasteSelected)} />
-      <MenuItem icon={SquareStack} label="Duplicate" onClick={() => run(duplicateSelected)} />
-      <MenuItem icon={selectedItem?.locked ? Unlock : Lock} label={selectedItem?.locked ? 'Unlock' : 'Lock'} onClick={() => run(lockSelected)} />
-      <MenuItem icon={selectedItem?.hidden ? Eye : EyeOff} label={selectedItem?.hidden ? 'Show' : 'Hide'} onClick={() => run(hideSelected)} />
-      <MenuItem icon={Layers} label="Group" onClick={() => run(groupSelected)} />
-      <MenuItem icon={BoxSelect} label="Ungroup" onClick={() => run(ungroupSelected)} />
-      <MenuItem icon={SendToBack} label="Bring to front" onClick={() => run(() => showToast('Layer ordering is controlled from Layers and the floating toolbar.'))} />
-      <MenuItem icon={SendToBack} label="Send to back" onClick={() => run(() => showToast('Layer ordering is controlled from Layers and the floating toolbar.'))} />
-      <MenuItem icon={Plus} label="Add interaction" onClick={() => run(() => selectedItem ? startConnection(selectedItem.id, currentPage?.id) : showToast('Select a node before adding an interaction.', 'error'))} />
+      <MenuItem icon={Copy} label="Copy" onClick={() => run(copyNodesInMap)} />
+      <MenuItem icon={Plus} label="Paste" onClick={() => run(pasteNodesInMap)} />
+      
+      {targetId && (
+        <>
+          <MenuItem icon={SquareStack} label="Duplicate" onClick={() => run(() => duplicateNodeInMap(targetId))} />
+          <MenuItem icon={targetNode?.locked ? Unlock : Lock} label={targetNode?.locked ? 'Unlock' : 'Lock'} onClick={() => run(() => lockNodeInMap(targetId))} />
+          <MenuItem icon={targetNode?.hidden ? Eye : EyeOff} label={targetNode?.hidden ? 'Show' : 'Hide'} onClick={() => run(() => hideNodeInMap(targetId))} />
+          
+          <MenuItem icon={BringToFront} label="Bring to front" onClick={() => run(() => bringToFrontInMap(targetId))} />
+          <MenuItem icon={SendToBack} label="Send to back" onClick={() => run(() => sendToBackInMap(targetId))} />
+        </>
+      )}
+
+      {selectedNodeIds.length > 1 && (
+        <MenuItem icon={Layers} label="Group" onClick={() => run(() => groupNodesInMap(selectedNodeIds))} />
+      )}
+      
+      {targetNode?.type === 'group' && (
+        <MenuItem icon={BoxSelect} label="Ungroup" onClick={() => run(() => ungroupNodeInMap(targetId))} />
+      )}
+      
       <MenuItem icon={SquareStack} label="Create component" onClick={() => run(() => showToast('Component creation is ready as a placeholder.'))} />
-      <MenuItem icon={SquareStack} label="Save as section template" onClick={() => run(() => showToast('Saving custom section templates is coming soon.'))} />
-      <MenuItem icon={Code2} label="Inspect node JSON" onClick={() => run(() => showToast(JSON.stringify(selectedItem || {}, null, 2).slice(0, 220)))} />
+      <MenuItem icon={SquareStack} label="Save as template" onClick={() => run(() => showToast('Saving custom templates is coming soon.'))} />
+      
+      {targetNode && (
+        <MenuItem icon={Code2} label="Inspect node JSON" onClick={() => run(() => {
+          navigator.clipboard.writeText(JSON.stringify(targetNode, null, 2));
+          showToast('Node JSON copied to clipboard.', 'success');
+        })} />
+      )}
+      
       <div className="my-1 h-px bg-slate-800" />
-      <MenuItem icon={Trash2} label="Delete" tone="danger" onClick={() => run(deleteSelected)} />
+      <MenuItem icon={Trash2} label="Delete" tone="danger" onClick={() => run(() => deleteNodesFromMap(selectedNodeIds))} />
     </div>
   );
 }
