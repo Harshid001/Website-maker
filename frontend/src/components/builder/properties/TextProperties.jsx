@@ -1,0 +1,43 @@
+import React from 'react';
+import { useBuilderStore } from '../../../store/builderStore';
+import { isTextElement } from '../../../utils/renderHelpers';
+import { ColorInput, MiniButton, PropertyGroup, SelectInput, TextArea, TextInput } from './PropertyControls';
+
+export default function TextProperties() {
+  const { selectedElement, updateSelectedContent, updateSelectedStyles, rewriteSelectedText } = useBuilderStore();
+  if (!selectedElement || !isTextElement(selectedElement.type)) return null;
+
+  const content = selectedElement.content;
+  const styles = selectedElement.styles || {};
+  const updateStyle = (key) => (value) => updateSelectedStyles({ [key]: value });
+
+  return (
+    <PropertyGroup title="Text Properties">
+      {typeof content === 'object' ? (
+        <>
+          {'title' in content && <TextInput label="Title" value={content.title} onChange={(value) => updateSelectedContent({ ...content, title: value })} />}
+          {'price' in content && <TextInput label="Price" value={content.price} onChange={(value) => updateSelectedContent({ ...content, price: value })} />}
+          {'quote' in content && <TextArea label="Quote" value={content.quote} onChange={(value) => updateSelectedContent({ ...content, quote: value })} />}
+          {'body' in content && <TextArea label="Body" value={content.body} onChange={(value) => updateSelectedContent({ ...content, body: value })} />}
+          {'author' in content && <TextInput label="Author" value={content.author} onChange={(value) => updateSelectedContent({ ...content, author: value })} />}
+        </>
+      ) : (
+        <TextArea label="Text content" value={content} onChange={updateSelectedContent} rows={4} />
+      )}
+      <SelectInput label="Font family" value={styles.fontFamily || ''} onChange={updateStyle('fontFamily')} options={['Inter', 'Georgia', 'Arial', 'system-ui']} />
+      <div className="grid grid-cols-2 gap-2">
+        <TextInput label="Font size" value={styles.fontSize} onChange={updateStyle('fontSize')} placeholder="18px" />
+        <TextInput label="Weight" value={styles.fontWeight} onChange={updateStyle('fontWeight')} placeholder="700" />
+        <TextInput label="Line height" value={styles.lineHeight} onChange={updateStyle('lineHeight')} placeholder="1.5" />
+        <TextInput label="Letter spacing" value={styles.letterSpacing} onChange={updateStyle('letterSpacing')} placeholder="0" />
+      </div>
+      <SelectInput label="Text align" value={styles.textAlign || 'left'} onChange={updateStyle('textAlign')} options={['left', 'center', 'right', 'justify']} />
+      <ColorInput label="Text color" value={styles.color === 'inherit' ? '#0f172a' : styles.color} onChange={updateStyle('color')} />
+      <SelectInput label="Transform" value={styles.textTransform || 'none'} onChange={updateStyle('textTransform')} options={['none', 'uppercase', 'capitalize', 'lowercase']} />
+      <div className="grid grid-cols-2 gap-2">
+        <MiniButton onClick={() => rewriteSelectedText('professional')}>AI Rewrite</MiniButton>
+        <MiniButton onClick={() => rewriteSelectedText('cta')}>AI Generate Text</MiniButton>
+      </div>
+    </PropertyGroup>
+  );
+}

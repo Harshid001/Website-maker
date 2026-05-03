@@ -12,8 +12,11 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : true,
+  credentials: true,
+}));
+app.use(express.json({ limit: '1mb' }));
 
 // Routes Placeholder
 app.get('/', (req, res) => {
@@ -24,10 +27,12 @@ app.get('/', (req, res) => {
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/chat', chatRoutes);
 
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 app.use(notFound);

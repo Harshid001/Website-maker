@@ -12,9 +12,12 @@ function LayoutWrapper({ children }) {
   const isLandingPage = location.pathname === '/';
   const isEditorPage = 
     location.pathname.startsWith('/builder/') || 
+    location.pathname.startsWith('/preview/') ||
     ['/website-builder', '/design-2d', '/animations', '/three-d-visuals'].includes(location.pathname) ||
     ['/dashboard/website-builder', '/dashboard/design-2d', '/dashboard/design-3d', '/dashboard/animations'].includes(location.pathname);
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const isPublicSite = location.pathname.startsWith('/site/') || location.pathname.startsWith('/published/');
+  const isCreationFlow = location.pathname.startsWith('/create');
 
 
   // Editor pages have no top navbar and no standard sidebar
@@ -23,7 +26,7 @@ function LayoutWrapper({ children }) {
   }
 
   // Landing page has its own navbar (implemented within Landing.jsx or as a separate component)
-  if (isLandingPage || isAuthPage) {
+  if (isLandingPage || isAuthPage || isPublicSite || isCreationFlow) {
     return <main className="min-h-screen bg-white text-slate-900">{children}</main>;
   }
 

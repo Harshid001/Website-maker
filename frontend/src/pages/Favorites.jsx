@@ -1,12 +1,12 @@
 import React, { useContext } from 'react';
 import { ProjectContext } from '../context/ProjectContext';
 import ProjectCard from '../components/dashboard/ProjectCard';
-import { Star, Heart } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Favorites() {
   const { projects, favorites } = useContext(ProjectContext);
-  const favoriteProjects = projects.filter(p => favorites.includes(p.id));
+  const favoriteProjects = projects.filter(p => p.favorite || favorites.includes(p.id));
   const navigate = useNavigate();
 
   return (

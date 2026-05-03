@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Rocket, LayoutDashboard, LogIn } from 'lucide-react';
+import { Menu, X, LayoutDashboard, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../../context/AuthContext';
+import shopcraftLogo from '../../assets/logos/shopcraft-logo.svg';
 
 export default function LandingNavbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -34,12 +35,7 @@ export default function LandingNavbar() {
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:rotate-6 transition-transform">
-            <Rocket className="text-white" size={20} />
-          </div>
-          <span className="text-xl font-black tracking-tighter text-slate-900 uppercase">
-            ShopCraft <span className="text-indigo-600">Studio</span>
-          </span>
+          <img src={shopcraftLogo} alt="ShopCraft Studio" className="h-12 w-auto transition-transform group-hover:scale-[1.02]" />
         </Link>
 
         {/* Desktop Nav */}

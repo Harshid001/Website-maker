@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="180" viewBox="0 0 820 180" role="img" aria-labelledby="title desc">
+  <title id="title">ShopCraft Studio logo</title>
+  <desc id="desc">Full ShopCraft Studio wordmark with the AI design storefront icon.</desc>
+  <defs>
+    <linearGradient id="shopcraft-mark-gradient" x1="26" y1="26" x2="142" y2="142" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="0.52" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="shopcraft-cursor-gradient" x1="67" y1="65" x2="112" y2="129" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DFFBFF"/>
+    </linearGradient>
+    <linearGradient id="shopcraft-word-gradient" x1="190" y1="48" x2="640" y2="132" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="0.58" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <filter id="shopcraft-soft-shadow" x="12" y="12" width="144" height="144" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#2563EB" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shopcraft-soft-shadow)">
+    <rect x="26" y="26" width="116" height="116" rx="31" fill="url(#shopcraft-mark-gradient)"/>
+  </g>
+  <path d="M52 46H116L127 62H41L52 46Z" fill="#FFFFFF" opacity="0.22"/>
+  <path d="M56 46L48 62M74 46L70 62M94 46L98 62M112 46L120 62" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" opacity="0.42"/>
+  <path d="M50 75H118C122.418 75 126 78.582 126 83V116C126 120.418 122.418 124 118 124H50C45.582 124 42 120.418 42 116V83C42 78.582 45.582 75 50 75Z" fill="#111827" opacity="0.18"/>
+  <path d="M61 76V122M84 76V122M107 76V122M43 92H125M43 108H125" stroke="#FFFFFF" stroke-width="2.4" opacity="0.18"/>
+  <path d="M68 65L109 87L91 93.4L102.7 118L89.5 124.2L77.8 99.7L64 115.2L68 65Z" fill="url(#shopcraft-cursor-gradient)"/>
+  <path d="M68 65L109 87L91 93.4L102.7 118L89.5 124.2L77.8 99.7L64 115.2L68 65Z" fill="none" stroke="#111827" stroke-opacity="0.2" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M117 39L120.4 48.1L129.5 51.5L120.4 54.9L117 64L113.6 54.9L104.5 51.5L113.6 48.1L117 39Z" fill="#FFFFFF"/>
+  <path d="M117 45L118.8 49.7L123.5 51.5L118.8 53.3L117 58L115.2 53.3L110.5 51.5L115.2 49.7L117 45Z" fill="#06B6D4"/>
+  <path d="M108 79L120 73L129 81M116 102L130 108" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.65"/>
+  <circle cx="108" cy="79" r="4.2" fill="#FFFFFF"/>
+  <circle cx="120" cy="73" r="3.8" fill="#DFFBFF"/>
+  <circle cx="129" cy="81" r="3.8" fill="#FFFFFF"/>
+  <circle cx="116" cy="102" r="3.6" fill="#DFFBFF"/>
+  <circle cx="130" cy="108" r="3.6" fill="#FFFFFF"/>
+
+  <text x="178" y="97" fill="url(#shopcraft-word-gradient)" font-family="Inter, ui-rounded, 'SF Pro Rounded', 'Segoe UI', Arial, sans-serif" font-size="58" font-weight="800" letter-spacing="0">ShopCraft</text>
+  <text x="178" y="134" fill="#7C3AED" font-family="Inter, ui-rounded, 'SF Pro Rounded', 'Segoe UI', Arial, sans-serif" font-size="31" font-weight="500" letter-spacing="2.6">STUDIO</text>
+  <path d="M386 126H545" stroke="#06B6D4" stroke-width="3" stroke-linecap="round" opacity="0.65"/>
+</svg>

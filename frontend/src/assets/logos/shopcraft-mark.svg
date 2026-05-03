@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">ShopCraft Studio icon</title>
+  <desc id="desc">A gradient storefront design canvas with a smart cursor, AI nodes, and a creative spark.</desc>
+  <defs>
+    <linearGradient id="shopcraft-mark-gradient" x1="18" y1="18" x2="110" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="0.52" stop-color="#7C3AED"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="shopcraft-cursor-gradient" x1="49" y1="49" x2="84" y2="99" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DFFBFF"/>
+    </linearGradient>
+    <filter id="shopcraft-soft-shadow" x="8" y="8" width="112" height="112" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#2563EB" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shopcraft-soft-shadow)">
+    <rect x="18" y="18" width="92" height="92" rx="25" fill="url(#shopcraft-mark-gradient)"/>
+  </g>
+
+  <path d="M39 34H89L98 47H30L39 34Z" fill="#FFFFFF" opacity="0.22"/>
+  <path d="M42 34L36 47M56 34L53 47M72 34L75 47M86 34L92 47" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" opacity="0.42"/>
+
+  <path d="M37 57H90C93.866 57 97 60.134 97 64V90C97 93.866 93.866 97 90 97H37C33.134 97 30 93.866 30 90V64C30 60.134 33.134 57 37 57Z" fill="#111827" opacity="0.18"/>
+  <path d="M45 58V95M64 58V95M83 58V95M31 71H96M31 84H96" stroke="#FFFFFF" stroke-width="2" opacity="0.18"/>
+
+  <path d="M51 49L83 66L68.8 71.1L78.1 90.6L67.5 95.6L58.3 76.2L47.5 88.4L51 49Z" fill="url(#shopcraft-cursor-gradient)"/>
+  <path d="M51 49L83 66L68.8 71.1L78.1 90.6L67.5 95.6L58.3 76.2L47.5 88.4L51 49Z" fill="none" stroke="#111827" stroke-opacity="0.2" stroke-width="1.5" stroke-linejoin="round"/>
+
+  <path d="M91 30L93.7 37.3L101 40L93.7 42.7L91 50L88.3 42.7L81 40L88.3 37.3L91 30Z" fill="#FFFFFF"/>
+  <path d="M91 34.8L92.4 38.6L96.2 40L92.4 41.4L91 45.2L89.6 41.4L85.8 40L89.6 38.6L91 34.8Z" fill="#06B6D4"/>
+
+  <path d="M82 60L92 55L99 61M88 78L99 83" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.65"/>
+  <circle cx="82" cy="60" r="3.6" fill="#FFFFFF"/>
+  <circle cx="92" cy="55" r="3.2" fill="#DFFBFF"/>
+  <circle cx="99" cy="61" r="3.2" fill="#FFFFFF"/>
+  <circle cx="88" cy="78" r="3" fill="#DFFBFF"/>
+  <circle cx="99" cy="83" r="3" fill="#FFFFFF"/>
+</svg>

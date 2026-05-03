@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -20,10 +20,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Sidebar() {
   const { sidebarCollapsed, toggleSidebar, isMobileMenuOpen, closeMobileMenu } = useUI();
+  const navigate = useNavigate();
 
   const links = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Create New', path: '/create-new', icon: PlusCircle },
+    { name: 'Create New', path: '/create/website', icon: PlusCircle },
     { type: 'divider' },
     { name: 'Websites', path: '/builder/website', icon: Globe },
     { name: '2D Designs', path: '/builder/design-2d', icon: Palette },
@@ -112,15 +113,6 @@ export default function Sidebar() {
                     </div>
                   )}
 
-                  {/* Active Indicator */}
-                  <NavLink
-                    to={link.path}
-                    className={({ isActive }) => `
-                      absolute left-0 w-1 bg-indigo-500 rounded-r-full transition-all duration-300
-                      ${isActive ? 'h-6' : 'h-0 opacity-0'}
-                      ${sidebarCollapsed ? 'hidden' : ''}
-                    `}
-                  />
                 </NavLink>
               )
             ))}
@@ -140,7 +132,7 @@ export default function Sidebar() {
                 </div>
                 <p className="text-white font-black text-xs uppercase tracking-[0.2em] mb-1">Go Unlimited</p>
                 <p className="text-indigo-100 text-[10px] font-medium mb-4 opacity-80 leading-relaxed">Unlock all AI features and templates.</p>
-                <button className="w-full bg-white text-indigo-600 font-black py-2.5 rounded-xl text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-all shadow-lg active:scale-95">
+                <button type="button" onClick={() => navigate('/dashboard/settings')} className="w-full bg-white text-indigo-600 font-black py-2.5 rounded-xl text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-all shadow-lg active:scale-95">
                   Upgrade Now
                 </button>
               </div>
@@ -148,7 +140,7 @@ export default function Sidebar() {
             </motion.div>
           ) : (
             <div className="flex flex-col items-center gap-4">
-              <button className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 transition-all active:scale-90 group relative">
+              <button type="button" onClick={() => navigate('/dashboard/settings')} className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 transition-all active:scale-90 group relative">
                 <Cloud size={20} />
                 <div className="fixed left-24 px-3 py-2 bg-gray-900 border border-gray-800 text-white text-[10px] font-black uppercase tracking-widest rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-300 translate-x-[-10px] group-hover:translate-x-0 z-[100] shadow-2xl">
                   Upgrade

@@ -35,7 +35,7 @@ export default function CreateNew() {
               description={type.description}
               icon={type.icon}
               color={type.color}
-              path={`/builder/${type.id}`}
+              path={type.id === 'website' ? '/create/website' : `/builder/${type.id}`}
             />
           </motion.div>
         ))}

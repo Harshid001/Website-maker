@@ -1,42 +1,61 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useState } from 'react';
+import { projectStorage } from '../services/projectStorage';
 
 export const ProjectContext = createContext();
 
 export const ProjectProvider = ({ children }) => {
-  const [projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState(() => projectStorage.listProjects());
   const [currentProject, setCurrentProject] = useState(null);
-  const [favorites, setFavorites] = useState([]);
+  const [favorites, setFavorites] = useState(() => projectStorage.listProjects().filter((project) => project.favorite).map((project) => project.id));
+
+  const refreshProjects = useCallback(() => {
+    const nextProjects = projectStorage.listProjects();
+    setProjects(nextProjects);
+    setFavorites(nextProjects.filter((project) => project.favorite).map((project) => project.id));
+  }, []);
+
+  useEffect(() => {
+    refreshProjects();
+  }, [refreshProjects]);
 
   const addProject = (project) => {
-    const newProject = {
-      ...project,
-      id: Date.now(),
-      createdAt: new Date().toISOString(),
-      status: 'draft',
-    };
-    setProjects((prev) => [newProject, ...prev]);
+    const newProject = projectStorage.createProject(project);
+    refreshProjects();
     return newProject;
   };
 
   const updateProject = (id, updates) => {
-    setProjects((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
+    const updated = projectStorage.updateProject(id, updates);
+    refreshProjects();
+    return updated;
   };
 
   const deleteProject = (id) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
+    projectStorage.deleteProject(id);
+    refreshProjects();
+  };
+
+  const duplicateProject = (id) => {
+    const copy = projectStorage.duplicateProject(id);
+    refreshProjects();
+    return copy;
+  };
+
+  const publishProject = (id) => {
+    const published = projectStorage.publishProject(id);
+    refreshProjects();
+    return published;
   };
 
   const toggleFavorite = (projectId) => {
-    setFavorites((prev) =>
-      prev.includes(projectId)
-        ? prev.filter((id) => id !== projectId)
-        : [...prev, projectId]
-    );
+    const project = projectStorage.getProject(projectId);
+    if (!project) return null;
+    const updated = projectStorage.updateProject(projectId, { ...project, favorite: !project.favorite });
+    refreshProjects();
+    return updated;
   };
 
-  const isFavorite = (projectId) => favorites.includes(projectId);
+  const isFavorite = (projectId) => projects.some((project) => project.id === projectId && project.favorite);
 
   return (
     <ProjectContext.Provider
@@ -49,6 +68,9 @@ export const ProjectProvider = ({ children }) => {
         addProject,
         updateProject,
         deleteProject,
+        duplicateProject,
+        publishProject,
+        refreshProjects,
         toggleFavorite,
         isFavorite,
       }}

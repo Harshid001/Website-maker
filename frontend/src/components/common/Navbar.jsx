@@ -1,9 +1,10 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
-import { User, LogOut, Menu, X, Bell } from 'lucide-react';
+import { User, LogOut, Menu, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUI } from '../../context/UIContext';
+import shopcraftLogoLight from '../../assets/logos/shopcraft-logo-light.svg';
 
 export default function Navbar() {
   const { user, logout } = useContext(AuthContext);
@@ -28,12 +29,7 @@ export default function Navbar() {
           </button>
           
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <span className="text-white font-bold text-xl">S</span>
-            </div>
-            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-              ShopCraft
-            </span>
+            <img src={shopcraftLogoLight} alt="ShopCraft Studio" className="h-12 w-auto" />
           </Link>
         </div>
 
