@@ -82,7 +82,7 @@ const responsiveRulesFor = (warnings = [], activeDevice = 'desktop') => {
   return responsive;
 };
 
-const canMoveElement = (activeTool) => activeTool === 'hand';
+const canMoveElement = (activeTool) => activeTool === 'select';
 
 export default function SmartCanvas({ readonly = false }) {
   const {
@@ -120,7 +120,7 @@ export default function SmartCanvas({ readonly = false }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const { measureDropZones, clientPointToCanvas, clientSizeToCanvas } = useDropZones(canvasRef, nodesMap, currentPage);
   const showMovePlacement = !readonly
-    && activeTool === 'hand'
+    && activeTool === 'select'
     && dragState.isDragging
     && dragState.dragType === 'move-element';
   const syncDragState = useCallback((nextDragState) => {
@@ -161,7 +161,7 @@ export default function SmartCanvas({ readonly = false }) {
 
   useEffect(() => {
     if (pendingInsert) return;
-    if (activeTool === 'hand') return;
+    if (activeTool === 'select') return;
     if (!activeDragRef.current && !pointerDragRef.current && !dragState.isDragging) return;
     activeDragRef.current = null;
     pointerDragRef.current = null;

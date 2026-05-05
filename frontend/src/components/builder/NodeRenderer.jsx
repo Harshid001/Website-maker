@@ -40,7 +40,7 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
   } = useSortable({
     id: nodeId,
     data: { type: 'node', node },
-    disabled: activeTool !== 'hand' || isEditing || node.locked,
+    disabled: activeTool !== 'select' || isEditing || node.locked,
   });
 
   // Keep contentEditable in sync with state when not editing
@@ -66,11 +66,19 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
 
   const handlePointerDown = (e) => {
     if (isPreview) return;
-    e.stopPropagation();
 
     if (e.button === 2) {
+      e.stopPropagation();
       return;
     }
+
+    if (activeTool === 'hand') {
+      // Do nothing, let it bubble up to CanvasFrame to trigger pan
+      return;
+    }
+
+    // Stop propagation for all other tools
+    e.stopPropagation();
 
     if (activeTool === 'select') {
       if (e.shiftKey) {
@@ -80,14 +88,6 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
           selectNodes([...selectedNodeIds, nodeId]);
         }
       } else {
-        selectNode(nodeId);
-      }
-      return;
-    }
-
-    if (activeTool === 'hand') {
-      e.stopPropagation();
-      if (!isSelected) {
         selectNode(nodeId);
       }
       return;

@@ -6,7 +6,7 @@ import PrototypeOverlay from './prototype/PrototypeOverlay';
 import AlignmentGuides from './AlignmentGuides';
 
 export default function CanvasFrame({ children, showPrototypeOverlay = true }) {
-  const { activeDevice, activeTool, project, currentPage, zoom, setZoom, fitRequestId, setCanvasPan } = useBuilderStore();
+  const { activeDevice, activeTool, project, currentPage, zoom, setZoom, fitRequestId, setCanvasPan, dragState } = useBuilderStore();
   const outerRef = useRef(null);
   const frameRef = useRef(null);
   const panRef = useRef(null);
@@ -59,8 +59,25 @@ export default function CanvasFrame({ children, showPrototypeOverlay = true }) {
     }
   };
 
+  const mouseRef = useRef(null);
+  const autoPanRef = useRef(null);
+
+  const stopAutoPan = () => {
+    if (autoPanRef.current) {
+      cancelAnimationFrame(autoPanRef.current);
+      autoPanRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    if (activeTool !== 'hand' || dragState?.isDragging) {
+      stopAutoPan();
+    }
+  }, [activeTool, dragState?.isDragging]);
+
   const beginPan = (event) => {
     if (event.button !== 1 && activeTool !== 'hand') return;
+    if (dragState?.isDragging) return;
     event.preventDefault();
     panRef.current = {
       x: event.clientX,
@@ -68,20 +85,77 @@ export default function CanvasFrame({ children, showPrototypeOverlay = true }) {
       left: outerRef.current?.scrollLeft || 0,
       top: outerRef.current?.scrollTop || 0,
     };
+    mouseRef.current = { x: event.clientX, y: event.clientY };
     setIsPanning(true);
     outerRef.current?.setPointerCapture?.(event.pointerId);
   };
 
   const updatePan = (event) => {
     if (!panRef.current || !outerRef.current) return;
+    
+    mouseRef.current = { x: event.clientX, y: event.clientY };
+    
     outerRef.current.scrollLeft = panRef.current.left - (event.clientX - panRef.current.x);
     outerRef.current.scrollTop = panRef.current.top - (event.clientY - panRef.current.y);
     setCanvasPan({ x: outerRef.current.scrollLeft, y: outerRef.current.scrollTop });
+
+    const rect = outerRef.current.getBoundingClientRect();
+    const EDGE = 40;
+    const { x, y } = mouseRef.current;
+    
+    if (
+      x - rect.left < EDGE || 
+      rect.right - x < EDGE || 
+      y - rect.top < EDGE || 
+      rect.bottom - y < EDGE
+    ) {
+      if (!autoPanRef.current) {
+        let lastTime = performance.now();
+        const loop = (time) => {
+          if (!mouseRef.current || !outerRef.current || !panRef.current) {
+            autoPanRef.current = null;
+            return;
+          }
+          
+          const dt = time - lastTime;
+          lastTime = time;
+          
+          const currentMouse = mouseRef.current;
+          const currentRect = outerRef.current.getBoundingClientRect();
+          const SPEED = 0.8;
+          
+          let dx = 0;
+          let dy = 0;
+          
+          if (currentMouse.x - currentRect.left < EDGE) dx = -SPEED * dt;
+          else if (currentRect.right - currentMouse.x < EDGE) dx = SPEED * dt;
+          
+          if (currentMouse.y - currentRect.top < EDGE) dy = -SPEED * dt;
+          else if (currentRect.bottom - currentMouse.y < EDGE) dy = SPEED * dt;
+          
+          if (dx !== 0 || dy !== 0) {
+            outerRef.current.scrollLeft += dx;
+            outerRef.current.scrollTop += dy;
+            panRef.current.left += dx;
+            panRef.current.top += dy;
+            setCanvasPan({ x: outerRef.current.scrollLeft, y: outerRef.current.scrollTop });
+            autoPanRef.current = requestAnimationFrame(loop);
+          } else {
+            autoPanRef.current = null;
+          }
+        };
+        autoPanRef.current = requestAnimationFrame(loop);
+      }
+    } else {
+      stopAutoPan();
+    }
   };
 
   const endPan = (event) => {
+    stopAutoPan();
     if (!panRef.current) return;
     panRef.current = null;
+    mouseRef.current = null;
     setIsPanning(false);
     outerRef.current?.releasePointerCapture?.(event.pointerId);
   };
