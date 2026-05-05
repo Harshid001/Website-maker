@@ -10,6 +10,7 @@ export default function AdvancedProperties() {
     else if (selectedElement) updateElement(selectedSectionId, selectedElementId, patch);
     else if (selectedSection) updateSection(selectedSectionId, patch);
   };
+  const updateProps = (patch) => update({ props: { ...(item?.props || {}), ...patch } });
 
   return (
     <PropertyGroup title="Advanced Settings">
@@ -22,15 +23,15 @@ export default function AdvancedProperties() {
       <TextArea label="HTML embed" value={item?.htmlEmbed || ''} onChange={(value) => update({ htmlEmbed: value })} />
 
       <div className="grid grid-cols-2 gap-2">
-        <MiniButton onClick={() => showToast('API connection placeholder saved for future backend endpoint. Add your API URL and method in the configuration.')}>API connection</MiniButton>
-        <MiniButton onClick={() => showToast('Tracking code placeholder saved. Tracking snippets will be injected into the publish pipeline.')}>Tracking code</MiniButton>
+        <MiniButton onClick={() => { updateProps({ apiConnection: { enabled: true, method: 'GET', url: item?.props?.apiConnection?.url || '' } }); showToast('API connection settings enabled on this item.'); }}>API connection</MiniButton>
+        <MiniButton onClick={() => { update({ trackingEnabled: true }); showToast('Tracking flag enabled on this item.'); }}>Tracking code</MiniButton>
         <MiniButton onClick={() => {
           const colors = item?.styles || {};
           const bg = colors.backgroundColor || '#ffffff';
           const text = colors.color || '#0f172a';
           showToast(`Contrast check — BG: ${bg}, Text: ${text}. Ensure WCAG AA contrast ratio of 4.5:1 for body text and 3:1 for large text.`);
         }}>Contrast check</MiniButton>
-        <MiniButton onClick={() => showToast('Tab index and focus management settings are applied during publish for keyboard navigation compliance.')}>Focus order</MiniButton>
+        <MiniButton onClick={() => { update({ keyboardFocus: true, tabIndex: item?.tabIndex ?? 0 }); showToast('Keyboard focus enabled for this item.'); }}>Focus order</MiniButton>
       </div>
 
       {/* Developer JSON view */}

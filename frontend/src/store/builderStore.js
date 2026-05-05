@@ -45,11 +45,77 @@ const pxNumber = (value) => {
 
 const MIN_ZOOM = 10;
 const MAX_ZOOM = 400;
+const DEVICE_IDS = ['desktop', 'laptop', 'tablet', 'mobile'];
+
+const emptyDragState = {
+  isDragging: false,
+  dragType: null,
+  elementId: null,
+  elementType: null,
+  draggedElementId: null,
+  draggedElementType: null,
+  draggedElementSize: {
+    width: 0,
+    height: 0,
+  },
+  mousePosition: {
+    x: 0,
+    y: 0,
+  },
+  currentMousePoint: {
+    x: 0,
+    y: 0,
+  },
+  dragOffset: null,
+  originalRect: null,
+  source: null,
+  activeDropZoneId: null,
+  activeDropZone: null,
+  dropZones: [],
+  previewRect: null,
+  snapGuides: [],
+  warning: null,
+};
 
 const clampZoom = (value) => {
   const numeric = Number.parseFloat(String(value).replace('%', ''));
   if (!Number.isFinite(numeric)) return 100;
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(numeric)));
+};
+
+const valueWithPx = (value) => {
+  if (value === '' || value === null || value === undefined) return '';
+  return typeof value === 'number' ? `${value}px` : String(value);
+};
+
+const layoutPatchToResponsiveStyles = (layout = {}) => {
+  const styles = {};
+  if (layout.width !== undefined) styles.width = layout.width;
+  if (layout.height !== undefined) styles.height = layout.height;
+  if (layout.x !== undefined) styles.left = valueWithPx(layout.x);
+  if (layout.y !== undefined) styles.top = valueWithPx(layout.y);
+  if (layout.zIndex !== undefined) styles.zIndex = layout.zIndex;
+  if (layout.rotation !== undefined) styles.transform = `rotate(${Number(layout.rotation) || 0}deg)`;
+  if (layout.gap !== undefined) styles.gap = layout.gap;
+  if (layout.alignItems !== undefined) styles.alignItems = layout.alignItems;
+  if (layout.justifyContent !== undefined) styles.justifyContent = layout.justifyContent;
+  if (layout.gridTemplateColumns !== undefined) styles.gridTemplateColumns = layout.gridTemplateColumns;
+  if (layout.gridTemplateRows !== undefined) styles.gridTemplateRows = layout.gridTemplateRows;
+  if (layout.positionMode === LAYOUT_MODES.FLEX_ROW) {
+    styles.display = 'flex';
+    styles.flexDirection = 'row';
+  }
+  if (layout.positionMode === LAYOUT_MODES.FLEX_COLUMN) {
+    styles.display = 'flex';
+    styles.flexDirection = 'column';
+  }
+  if (layout.positionMode === LAYOUT_MODES.GRID) {
+    styles.display = 'grid';
+  }
+  if (layout.positionMode === LAYOUT_MODES.FREE) {
+    styles.position = 'absolute';
+  }
+  return styles;
 };
 
 const themedElement = (element, theme) => {
@@ -116,13 +182,13 @@ const themedPages = (pages = [], theme) =>
     }),
   }));
 
-export const BuilderProvider = ({ projectId, children }) => {
+export const BuilderProvider = ({ projectId, initialPageId, children }) => {
   const [project, setProjectState] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [selectedInteractionId, setSelectedInteractionId] = useState(null);
   const [activeLeftTool, setActiveLeftTool] = useState('ai');
-  const [activeDevice, setActiveDevice] = useState('desktop');
+  const [activeDevice, setActiveDeviceState] = useState('desktop');
   const [builderMode, setBuilderModeState] = useState('design');
   const [activeTool, setActiveToolState] = useState('select');
   const [selectedNodeIds, setSelectedNodeIds] = useState([]);
@@ -144,13 +210,20 @@ export const BuilderProvider = ({ projectId, children }) => {
   const [fitRequestId, setFitRequestId] = useState(0);
   const [connectionDraft, setConnectionDraft] = useState(null);
   const [nodesMap, setNodesMap] = useState({});
+  const [canvasView, setCanvasView] = useState('design'); // 'design' or 'routing'
   const [editingNodeId, setEditingNodeId] = useState(null);
+  const [pendingInsert, setPendingInsert] = useState(null);
+  const [dragState, setDragState] = useState(emptyDragState);
 
   const setZoom = useCallback((value) => {
     setZoomState((current) => {
       const nextValue = typeof value === 'function' ? value(current) : value;
       return clampZoom(nextValue);
     });
+  }, []);
+
+  const setActiveDevice = useCallback((device) => {
+    setActiveDeviceState(DEVICE_IDS.includes(device) ? device : 'desktop');
   }, []);
 
   const fitToScreen = useCallback(() => {
@@ -179,13 +252,18 @@ export const BuilderProvider = ({ projectId, children }) => {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const loadProject = useCallback((id) => {
+  const loadProject = useCallback((id, pageId) => {
     const loaded = id ? projectStorage.getProject(id) : projectStorage.createBlankProject();
     if (!loaded) {
       setProjectState(null);
       showToast('Project not found. Opened a safe empty builder state.', 'error');
       return null;
     }
+    
+    if (pageId && loaded.pages?.find((p) => p.id === pageId)) {
+      loaded.currentPageId = pageId;
+    }
+    
     setProjectState(loaded);
     setSelectedSectionId(null);
     setSelectedElementId(null);
@@ -193,6 +271,8 @@ export const BuilderProvider = ({ projectId, children }) => {
     setSelectedNodeIds([]);
     setConnectionDraft(null);
     setEditingNodeId(null);
+    setPendingInsert(null);
+    setDragState(emptyDragState);
     setHistory([]);
     setFuture([]);
     setLastSavedAt(loaded.updatedAt || null);
@@ -205,8 +285,9 @@ export const BuilderProvider = ({ projectId, children }) => {
   }, [showToast]);
 
   useEffect(() => {
-    loadProject(projectId);
-  }, [projectId, loadProject]);
+    const timer = window.setTimeout(() => loadProject(projectId, initialPageId), 0);
+    return () => window.clearTimeout(timer);
+  }, [projectId, initialPageId, loadProject]);
 
   // Sync nodesMap back into project on every commit
   const commitNodesMap = useCallback((updater, options = {}) => {
@@ -236,6 +317,26 @@ export const BuilderProvider = ({ projectId, children }) => {
       return normalized;
     });
   }, []);
+
+  useEffect(() => {
+    if (!project?.id) return undefined;
+    const timer = window.setTimeout(() => {
+      try {
+        const updatedAt = new Date().toISOString();
+        projectStorage.updateProject(project.id, {
+          ...project,
+          nodesMap,
+          generatedCode: generateWebsiteCode({ ...project, nodesMap }),
+          updatedAt,
+        });
+        setLastSavedAt(updatedAt);
+      } catch (error) {
+        console.warn('Autosave failed', error);
+      }
+    }, 800);
+
+    return () => window.clearTimeout(timer);
+  }, [nodesMap, project]);
 
   const currentPage = useMemo(() => {
     if (!project) return null;
@@ -320,6 +421,9 @@ export const BuilderProvider = ({ projectId, children }) => {
     setSelectedNodeIds([]);
     setConnectionDraft(null);
     setContextMenu(null);
+    setPendingInsert(null);
+    setDragState(emptyDragState);
+    setActiveToolState((tool) => (tool === 'insert' ? 'select' : tool));
   }, []);
 
   const selectNode = useCallback((nodeId, options = {}) => {
@@ -380,6 +484,91 @@ export const BuilderProvider = ({ projectId, children }) => {
       setBuilderModeState('design');
     }
   }, [builderMode]);
+
+  const startPlacementMode = useCallback((payload = {}) => {
+    setDragState({
+      ...emptyDragState,
+      isDragging: true,
+      dragType: payload.dragType || null,
+      elementId: payload.elementId || payload.draggedElementId || payload.nodeId || payload.id || null,
+      elementType: payload.elementType || payload.draggedElementType || payload.type || null,
+      draggedElementId: payload.draggedElementId || payload.nodeId || payload.id || null,
+      draggedElementType: payload.draggedElementType || payload.elementType || payload.type || null,
+      draggedElementSize: {
+        width: Number(payload.draggedElementSize?.width ?? payload.width ?? payload.size?.width ?? 0),
+        height: Number(payload.draggedElementSize?.height ?? payload.height ?? payload.size?.height ?? 0),
+      },
+      mousePosition: {
+        x: Number(payload.mousePosition?.x ?? payload.x ?? 0),
+        y: Number(payload.mousePosition?.y ?? payload.y ?? 0),
+      },
+      currentMousePoint: {
+        x: Number(payload.currentMousePoint?.x ?? payload.mousePosition?.x ?? payload.x ?? 0),
+        y: Number(payload.currentMousePoint?.y ?? payload.mousePosition?.y ?? payload.y ?? 0),
+      },
+      dragOffset: payload.dragOffset || null,
+      originalRect: payload.originalRect || null,
+      source: payload.source || null,
+      activeDropZoneId: payload.activeDropZoneId || null,
+      activeDropZone: payload.activeDropZone || null,
+      dropZones: payload.dropZones || [],
+      previewRect: payload.previewRect || null,
+      snapGuides: payload.snapGuides || [],
+      warning: payload.warning || null,
+    });
+  }, []);
+
+  const updatePlacementMode = useCallback((patch = {}) => {
+    setDragState((current) => ({
+      ...current,
+      ...patch,
+      isDragging: patch.isDragging ?? current.isDragging,
+      draggedElementSize: {
+        ...(current.draggedElementSize || emptyDragState.draggedElementSize),
+        ...(patch.draggedElementSize || {}),
+      },
+      mousePosition: {
+        ...(current.mousePosition || emptyDragState.mousePosition),
+        ...(patch.mousePosition || {}),
+      },
+      currentMousePoint: {
+        ...(current.currentMousePoint || emptyDragState.currentMousePoint),
+        ...(patch.currentMousePoint || patch.mousePosition || {}),
+      },
+      dropZones: patch.dropZones ?? current.dropZones,
+      snapGuides: patch.snapGuides ?? current.snapGuides,
+    }));
+  }, []);
+
+  const clearPlacementMode = useCallback(() => {
+    setDragState(emptyDragState);
+  }, []);
+
+  const startSmartInsert = useCallback((payload = {}) => {
+    const rawType = typeof payload === 'string' ? payload : (payload.sectionType || payload.elementType || payload.type || 'heading');
+    const normalizedType = normalizeElementType(rawType);
+    const dragType = payload.dragType || (sectionTypes.has(normalizedType) ? 'new-section' : 'new-element');
+    setPendingInsert({
+      id: createId('insert'),
+      dragType,
+      elementType: dragType === 'new-section' ? normalizedType : normalizedType,
+      sectionType: dragType === 'new-section' ? normalizedType : undefined,
+      source: 'insert',
+    });
+    startPlacementMode({
+      draggedElementId: null,
+      draggedElementType: normalizedType,
+      source: 'new-element',
+    });
+    setActiveToolState('insert');
+    showToast('Move over the canvas to choose a smart placement zone.');
+  }, [showToast, startPlacementMode]);
+
+  const cancelSmartInsert = useCallback(() => {
+    setPendingInsert(null);
+    clearPlacementMode();
+    setActiveToolState((tool) => (tool === 'insert' ? 'select' : tool));
+  }, [clearPlacementMode]);
 
   const addSection = useCallback((typeOrSection = 'hero') => {
     const section = typeof typeOrSection === 'string' ? rekeyTree(getSectionBlueprint(typeOrSection)) : rekeyTree(typeOrSection);
@@ -636,11 +825,15 @@ export const BuilderProvider = ({ projectId, children }) => {
 
   const updateSelectedStyles = useCallback((styles) => {
     if (selectedNodeIds.length) {
-      commitNodesMap((map) => selectedNodeIds.reduce((next, id) => nodeOps.updateNodeStyles(next, id, styles), map));
+      commitNodesMap((map) => selectedNodeIds.reduce((next, id) => (
+        activeDevice === 'desktop'
+          ? nodeOps.updateNodeStyles(next, id, styles)
+          : nodeOps.updateNodeResponsive(next, id, activeDevice, styles)
+      ), map));
     } else if (selectedElement) updateElement(selectedSectionId, selectedElementId, { styles });
     else if (selectedSection) updateSection(selectedSectionId, { styles });
     else showToast('Select a section or element first.', 'error');
-  }, [commitNodesMap, selectedElement, selectedElementId, selectedNodeIds, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
+  }, [activeDevice, commitNodesMap, selectedElement, selectedElementId, selectedNodeIds, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
 
   const updateSelectedProps = useCallback((props) => {
     if (selectedNodeIds.length === 1) {
@@ -1006,6 +1199,69 @@ export const BuilderProvider = ({ projectId, children }) => {
     return template;
   }, [commitNodesMap, commitProject, currentPage, showToast]);
 
+  const applyDesignTemplate = useCallback((template, mode = 'replace') => {
+    if (!template) return showToast('Template not found.', 'error');
+    const theme = getThemePreset(template.themeId || 'clean-white');
+    const sectionList = (template.sectionTypes || []).map((type) => {
+      const section = rekeyTree(deepClone(getSectionBlueprint(type)));
+      if (type === 'hero' && section.elements?.[0]) {
+        section.elements[0].content = `${template.title} — built for modern customers.`;
+      }
+      if (type === 'footer' && section.elements?.[0]) {
+        section.elements[0].content = template.title;
+      }
+      return section;
+    });
+    const homePageId = createId('page');
+    const pages = [{
+      id: homePageId,
+      name: 'Home',
+      slug: 'home',
+      isHome: true,
+      sections: sectionList,
+    }];
+
+    if (mode === 'append') {
+      const appendedSections = rekeyTree(deepClone(sectionList));
+      commitProject((draft) =>
+        toPageSections(draft, draft.currentPageId, (items) => [...items, ...appendedSections]),
+      );
+      if (currentPage?.id && appendedSections.length) {
+        const migrated = nodeOps.migrateFromLegacy([{ ...currentPage, sections: appendedSections }]);
+        const migratedPage = migrated[currentPage.id];
+        commitNodesMap((map) => {
+          const next = { ...map };
+          for (const [id, node] of Object.entries(migrated)) {
+            if (id !== currentPage.id) next[id] = node;
+          }
+          const pageNode = next[currentPage.id] || createNode(NODE_TYPES.PAGE, { id: currentPage.id, name: currentPage.name || 'Page' });
+          next[currentPage.id] = {
+            ...pageNode,
+            children: [...(pageNode.children || []), ...(migratedPage?.children || [])],
+          };
+          return next;
+        });
+      }
+    } else {
+      commitProject((draft) => ({
+        ...draft,
+        name: template.title,
+        category: template.category,
+        theme: deepClone(theme),
+        pages,
+        currentPageId: homePageId,
+        sections: sectionList,
+        canvas: template.canvas || draft.canvas,
+      }));
+      commitNodesMap(nodeOps.migrateFromLegacy(pages));
+    }
+    setSelectedSectionId(null);
+    setSelectedElementId(null);
+    setSelectedNodeIds([]);
+    showToast(`${template.title} ${mode === 'append' ? 'sections added' : 'applied'}.`, 'success');
+    return template;
+  }, [commitNodesMap, commitProject, currentPage, showToast]);
+
   const generateMockSection = useCallback((type) => {
     const section = aiMockService.generateSection(type, project?.businessDetails || {});
     addSection(section);
@@ -1087,9 +1343,13 @@ export const BuilderProvider = ({ projectId, children }) => {
       styles: { width: '1440px', minHeight: '100vh', backgroundColor: '#ffffff' },
     };
     commitProject((draft) => ({ ...draft, pages: [...(draft.pages || []), page] }));
+    commitNodesMap((map) => ({
+      ...map,
+      [page.id]: createNode(NODE_TYPES.PAGE, { id: page.id, name: page.name, styles: page.styles || {}, children: [] }),
+    }), { skipHistory: true });
     showToast(`${name} page added.`, 'success');
     return page;
-  }, [commitProject, showToast]);
+  }, [commitNodesMap, commitProject, showToast]);
 
   const renamePage = useCallback((pageId, name) => {
     commitProject((draft) => ({
@@ -1346,16 +1606,26 @@ export const BuilderProvider = ({ projectId, children }) => {
   }, [commitNodesMap]);
 
   const updateNodeStylesInMap = useCallback((nodeId, styles) => {
-    commitNodesMap((map) => nodeOps.updateNodeStyles(map, nodeId, styles));
-  }, [commitNodesMap]);
+    commitNodesMap((map) => (
+      activeDevice === 'desktop'
+        ? nodeOps.updateNodeStyles(map, nodeId, styles)
+        : nodeOps.updateNodeResponsive(map, nodeId, activeDevice, styles)
+    ));
+  }, [activeDevice, commitNodesMap]);
 
   const updateNodePropsInMap = useCallback((nodeId, props) => {
     commitNodesMap((map) => nodeOps.updateNodeProps(map, nodeId, props));
   }, [commitNodesMap]);
 
   const updateNodeLayoutInMap = useCallback((nodeId, layout) => {
-    commitNodesMap((map) => nodeOps.updateNodeLayout(map, nodeId, layout));
-  }, [commitNodesMap]);
+    commitNodesMap((map) => {
+      if (activeDevice === 'desktop') return nodeOps.updateNodeLayout(map, nodeId, layout);
+      const responsiveStyles = layoutPatchToResponsiveStyles(layout);
+      return Object.keys(responsiveStyles).length
+        ? nodeOps.updateNodeResponsive(map, nodeId, activeDevice, responsiveStyles)
+        : map;
+    });
+  }, [activeDevice, commitNodesMap]);
 
   const updateNodeResponsiveInMap = useCallback((nodeId, device, styles) => {
     commitNodesMap((map) => nodeOps.updateNodeResponsive(map, nodeId, device, styles));
@@ -1393,6 +1663,17 @@ export const BuilderProvider = ({ projectId, children }) => {
 
   const moveNodeInMap = useCallback((nodeId, newParentId, newIndex) => {
     commitNodesMap((map) => nodeOps.moveNode(map, nodeId, newParentId, newIndex));
+  }, [commitNodesMap]);
+
+  const placeNodeInMap = useCallback((nodeId, newParentId, placement) => {
+    commitNodesMap((map) => nodeOps.placeNode(map, nodeId, newParentId, placement));
+  }, [commitNodesMap]);
+
+  const placeNodesInMap = useCallback((placements = []) => {
+    commitNodesMap((map) => placements.reduce((nextMap, item) => {
+      if (!item?.nodeId || !item.newParentId) return nextMap;
+      return nodeOps.placeNode(nextMap, item.nodeId, item.newParentId, item.placement || {});
+    }, map));
   }, [commitNodesMap]);
 
   const dragNodeInMap = useCallback((nodeId, position) => {
@@ -1447,6 +1728,14 @@ export const BuilderProvider = ({ projectId, children }) => {
 
   const sendToBackInMap = useCallback((nodeId) => {
     commitNodesMap((map) => nodeOps.sendToBack(map, nodeId));
+  }, [commitNodesMap]);
+
+  const bringForwardInMap = useCallback((nodeId) => {
+    commitNodesMap((map) => nodeOps.bringForward(map, nodeId));
+  }, [commitNodesMap]);
+
+  const sendBackwardInMap = useCallback((nodeId) => {
+    commitNodesMap((map) => nodeOps.sendBackward(map, nodeId));
   }, [commitNodesMap]);
 
   const alignNodesInMap = useCallback((direction, boundingBoxes) => {
@@ -1524,6 +1813,10 @@ export const BuilderProvider = ({ projectId, children }) => {
     leftPanelCollapsed,
     rightPanelCollapsed,
     fullscreenCanvas,
+    canvasView,
+    setCanvasView,
+    pendingInsert,
+    dragState,
     zoom,
     zoomMode: String(zoom),
     fitRequestId,
@@ -1541,6 +1834,11 @@ export const BuilderProvider = ({ projectId, children }) => {
     selectNodes,
     setMode,
     setActiveTool,
+    startSmartInsert,
+    cancelSmartInsert,
+    startPlacementMode,
+    updatePlacementMode,
+    clearPlacementMode,
     setSnapEnabled,
     setCanvasPan,
     openContextMenu,
@@ -1587,6 +1885,7 @@ export const BuilderProvider = ({ projectId, children }) => {
     moveSelectedDown,
     applyTheme,
     applyTemplate,
+    applyDesignTemplate,
     setActiveLeftTool,
     setActiveDevice,
     setPreviewMode,
@@ -1638,12 +1937,16 @@ export const BuilderProvider = ({ projectId, children }) => {
     deleteNodesFromMap,
     duplicateNodeInMap,
     moveNodeInMap,
+    placeNodeInMap,
+    placeNodesInMap,
     dragNodeInMap,
     resizeNodeInMap,
     lockNodeInMap,
     hideNodeInMap,
     groupNodesInMap,
     ungroupNodeInMap,
+    bringForwardInMap,
+    sendBackwardInMap,
     bringToFrontInMap,
     sendToBackInMap,
     alignNodesInMap,
@@ -1652,22 +1955,22 @@ export const BuilderProvider = ({ projectId, children }) => {
     pasteNodesInMap,
     commitNodesMap,
   }), [
-    activeDevice, activeLeftTool, activeTool, addAsset, addElement, addInteraction, addPage, addSection, alignSelected, applyTemplate, applyTheme,
-    builderMode, cancelConnection, canvasPan, clearSelection, clipboard, closeContextMenu, completeConnection, connectionDraft, contextMenu, copySelected, currentPage, deleteElement, deleteInteraction,
-    deletePage, deleteSection, deleteSelected, duplicateElement, duplicatePage,
+    activeDevice, activeLeftTool, activeTool, addAsset, addElement, addInteraction, addPage, addSection, alignSelected, applyDesignTemplate, applyTemplate, applyTheme,
+    builderMode, cancelConnection, cancelSmartInsert, canvasPan, clearPlacementMode, clearSelection, clipboard, closeContextMenu, completeConnection, connectionDraft, contextMenu, copySelected, currentPage, deleteElement, deleteInteraction,
+    deletePage, deleteSection, deleteSelected, dragState, duplicateElement, duplicatePage,
     duplicateSection, duplicateSelected, future, fullscreenCanvas, generateCode, generatedCode, generateMockSection, generateMockWebsite, generateSEO, groupSelected, hideSelected, history, isSaving,
-    fitRequestId, fitToScreen, lastSavedAt, loadProject, moveSection, nudgeSelected, openContextMenu, pasteSelected, previewMode, project, publishProject, redo, renamePage, updatePage,
+    fitRequestId, fitToScreen, lastSavedAt, loadProject, moveSection, nudgeSelected, openContextMenu, pasteSelected, pendingInsert, previewMode, project, publishProject, redo, renamePage, updatePage,
     leftPanelCollapsed, lockSelected, moveSelectedDown, moveSelectedUp, reorderElements, reorderSections,
     rewriteSelectedText, runInteraction, runNodeInteraction, saveProject, sections, selectAllNodes, selectElement, selectInteraction, selectNode, selectNodes, selectSection,
     selectedElement, selectedElementId, selectedInteraction, selectedInteractionId,
-    selectedItem, selectedKind, selectedNodeIds, selectedSection, selectedSectionId, setActiveTool, setHomePage, setMode, showToast, snapEnabled, switchPage, toast,
+    selectedItem, selectedKind, selectedNodeIds, selectedSection, selectedSectionId, setActiveTool, setHomePage, setMode, showToast, snapEnabled, startPlacementMode, startSmartInsert, switchPage, toast,
     resetZoom, rightPanelCollapsed, setZoom, setZoomMode, ungroupSelected, zoom, zoomIn, zoomOut,
-    undo, updateConnectionDrag, updateElement, updateInteraction, updateProjectSEO, updateProjectMeta, updateProjectSettings, updateSection, updateSelectedAnimation,
+    undo, updateConnectionDrag, updateElement, updateInteraction, updatePlacementMode, updateProjectSEO, updateProjectMeta, updateProjectSettings, updateSection, updateSelectedAnimation,
     updateSelectedContent, updateSelectedProps, updateSelectedResponsive, updateSelectedStyles, validateRoutes,
     nodesMap, editingNodeId, getNode, getSelectedNode, getSelectedNodes, currentPageNodes, nodeTree, flatNodeList,
     addNodeToMap, updateNodeInMap, updateNodeContentInMap, updateNodeStylesInMap, updateNodePropsInMap, updateNodeLayoutInMap, updateNodeResponsiveInMap, updateNodeAnimationInMap,
-    deleteNodeFromMap, deleteNodesFromMap, duplicateNodeInMap, moveNodeInMap, dragNodeInMap, resizeNodeInMap, lockNodeInMap, hideNodeInMap, groupNodesInMap, ungroupNodeInMap,
-    bringToFrontInMap, sendToBackInMap, alignNodesInMap, distributeNodesInMap, copyNodesInMap, pasteNodesInMap, commitNodesMap,
+    deleteNodeFromMap, deleteNodesFromMap, duplicateNodeInMap, moveNodeInMap, placeNodeInMap, placeNodesInMap, dragNodeInMap, resizeNodeInMap, lockNodeInMap, hideNodeInMap, groupNodesInMap, ungroupNodeInMap,
+    bringForwardInMap, sendBackwardInMap, bringToFrontInMap, sendToBackInMap, alignNodesInMap, distributeNodesInMap, copyNodesInMap, pasteNodesInMap, commitNodesMap,
   ]);
 
   return React.createElement(BuilderStoreContext.Provider, { value }, children);

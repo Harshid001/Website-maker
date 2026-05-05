@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CSS } from '@dnd-kit/utilities';
 import { useSortable } from '@dnd-kit/sortable';
@@ -23,6 +23,7 @@ export default function ElementRenderer({ element, sectionId, readonly = false, 
   const {
     currentPage,
     builderMode,
+    activeTool,
     selectedElementId,
     selectedNodeIds,
     selectElement,
@@ -36,19 +37,24 @@ export default function ElementRenderer({ element, sectionId, readonly = false, 
   const selected = selectedElementId === element.id || selectedNodeIds.includes(element.id);
   const hidden = element.hidden || responsiveHidden(element, device);
 
-  const sortable = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({
     id: element.id,
     data: { dragType: 'element', sectionId, elementId: element.id, elementType: element.type },
-    disabled: readonly || element.locked,
+    disabled: readonly || element.locked || activeTool !== 'hand',
   });
 
   if (hidden) return null;
 
   const baseClass = `${animationClassFor(element.animation)}`;
   const sortableStyle = {
-    transform: CSS.Transform.toString(sortable.transform),
-    transition: sortable.transition,
-    opacity: sortable.isDragging ? 0.45 : undefined,
+    transform: CSS.Transform.toString(transform),
+    transition,
   };
 
   const handleClick = (event) => {
@@ -288,7 +294,7 @@ export default function ElementRenderer({ element, sectionId, readonly = false, 
 
   return (
     <div
-      ref={sortable.setNodeRef}
+      ref={setNodeRef}
       style={sortableStyle}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
@@ -307,8 +313,8 @@ export default function ElementRenderer({ element, sectionId, readonly = false, 
           kind="Element"
           sectionId={sectionId}
           elementId={element.id}
-          dragAttributes={sortable.attributes}
-          dragListeners={sortable.listeners}
+          dragAttributes={attributes}
+          dragListeners={listeners}
         />
       )}
       {selected && !readonly && builderMode === 'prototype' && <ConnectionHandle sourceNodeId={element.id} sourcePageId={currentPage?.id} />}

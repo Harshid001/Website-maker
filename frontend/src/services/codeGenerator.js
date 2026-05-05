@@ -1,7 +1,7 @@
 import { CONTAINER_NODE_TYPES, LAYOUT_MODES, NODE_TAG_MAP, NODE_TYPES, TEXT_NODE_TYPES } from '../data/nodeSchema';
 
 const SELF_CLOSING_TAGS = new Set(['img', 'hr', 'input', 'br', 'meta', 'link']);
-const STYLE_KEYS_TO_SKIP = new Set(['--hover-transform']);
+const STYLE_KEYS_TO_SKIP = new Set(['--hover-transform', '--hover-background-color', '--hover-color', '--hover-border-color', '--hover-box-shadow']);
 
 const escapeHtml = (value = '') =>
   String(value)
@@ -39,6 +39,9 @@ const rootIdsForPage = (page, nodesMap) => {
 
 const semanticTagForNode = (node, context = {}) => {
   if (!node) return 'div';
+  if (node.props?.href && [NODE_TYPES.HEADING, NODE_TYPES.PARAGRAPH].includes(node.type)) {
+    return 'a';
+  }
   if (node.type === NODE_TYPES.HEADING) {
     const depth = Math.min(6, Math.max(1, context.headingLevel || 2));
     return `h${depth}`;
@@ -79,6 +82,11 @@ const styleObjectForNode = (node) => {
     }
   }
 
+  if (node.type === NODE_TYPES.IMAGE) {
+    styles.objectFit = node.props?.objectFit || styles.objectFit;
+    styles.objectPosition = node.props?.objectPosition || styles.objectPosition;
+  }
+
   return styles;
 };
 
@@ -109,6 +117,11 @@ const attributesForNode = (node, className) => {
 
   if ([NODE_TYPES.BUTTON, NODE_TYPES.NAV_LINK, NODE_TYPES.FOOTER_LINK, NODE_TYPES.WHATSAPP_BUTTON].includes(node.type)) {
     attrs.push(`href="${escapeHtml(props.href || props.scrollTo || '#')}"`);
+    if (props.target === '_blank') attrs.push('target="_blank" rel="noopener noreferrer"');
+  }
+
+  if (TEXT_NODE_TYPES.has(node.type) && props.href && ![NODE_TYPES.BUTTON, NODE_TYPES.NAV_LINK, NODE_TYPES.FOOTER_LINK, NODE_TYPES.WHATSAPP_BUTTON].includes(node.type)) {
+    attrs.push(`href="${escapeHtml(props.href)}"`);
     if (props.target === '_blank') attrs.push('target="_blank" rel="noopener noreferrer"');
   }
 
@@ -215,6 +228,8 @@ export const generateSEOHead = (project = {}, page = {}) => {
 
 export const generateResponsiveCSS = (project = {}) => {
   const nodesMap = resolveNodesMap(project);
+  const desktopRules = [];
+  const laptopRules = [];
   const tabletRules = [];
   const mobileRules = [];
 
@@ -222,25 +237,37 @@ export const generateResponsiveCSS = (project = {}) => {
     if (!node || isHiddenEverywhere(node)) continue;
     const className = `.${safeClass(node)}`;
     const responsive = node.responsive || {};
+    const desktop = { ...(responsive.desktop || {}) };
+    const laptop = { ...(responsive.laptop || {}) };
     const tablet = { ...(responsive.tablet || {}) };
     const mobile = { ...(responsive.mobile || {}) };
 
+    if (responsive.hideOnDesktop) desktop.display = 'none';
+    if (responsive.hideOnLaptop) laptop.display = 'none';
     if (responsive.hideOnTablet) tablet.display = 'none';
     if (responsive.hideOnMobile) mobile.display = 'none';
+    if (responsive.laptopPadding) laptop.padding = responsive.laptopPadding;
     if (responsive.tabletPadding) tablet.padding = responsive.tabletPadding;
     if (responsive.mobilePadding) mobile.padding = responsive.mobilePadding;
+    if (responsive.laptopFontSize) laptop.fontSize = responsive.laptopFontSize;
     if (responsive.tabletFontSize) tablet.fontSize = responsive.tabletFontSize;
     if (responsive.mobileFontSize) mobile.fontSize = responsive.mobileFontSize;
     if (responsive.stackDirectionOnMobile) mobile.flexDirection = responsive.stackDirectionOnMobile;
     if (responsive.fullWidthOnMobile) mobile.width = '100%';
 
+    const desktopCss = cssFromObject(desktop);
+    const laptopCss = cssFromObject(laptop);
     const tabletCss = cssFromObject(tablet);
     const mobileCss = cssFromObject(mobile);
+    if (desktopCss) desktopRules.push(`${className} {\n${desktopCss}\n}`);
+    if (laptopCss) laptopRules.push(`${className} {\n${laptopCss}\n}`);
     if (tabletCss) tabletRules.push(`${className} {\n${tabletCss}\n}`);
     if (mobileCss) mobileRules.push(`${className} {\n${mobileCss}\n}`);
   }
 
   return [
+    desktopRules.length ? desktopRules.join('\n') : '',
+    laptopRules.length ? `@media (max-width: 1200px) {\n${laptopRules.map((rule) => rule.replace(/^/gm, '  ')).join('\n')}\n}` : '',
     tabletRules.length ? `@media (max-width: 1024px) {\n${tabletRules.map((rule) => rule.replace(/^/gm, '  ')).join('\n')}\n}` : '',
     mobileRules.length ? `@media (max-width: 640px) {\n${mobileRules.map((rule) => rule.replace(/^/gm, '  ')).join('\n')}\n}` : '',
   ].filter(Boolean).join('\n\n');
@@ -282,7 +309,21 @@ button, input, textarea { font: inherit; }
     const css = cssFromObject(styleObjectForNode(node));
     if (css) rules.push(`.${safeClass(node)} {\n${css}\n}`);
     if (node.styles?.['--hover-transform']) {
-      rules.push(`.${safeClass(node)}:hover {\n  transform: ${node.styles['--hover-transform']};\n}`);
+      const hoverStyles = {
+        transform: node.styles['--hover-transform'],
+        backgroundColor: node.styles['--hover-background-color'],
+        color: node.styles['--hover-color'],
+        borderColor: node.styles['--hover-border-color'],
+        boxShadow: node.styles['--hover-box-shadow'],
+      };
+      rules.push(`.${safeClass(node)}:hover {\n${cssFromObject(hoverStyles)}\n}`);
+    } else if (node.styles?.['--hover-background-color'] || node.styles?.['--hover-color'] || node.styles?.['--hover-border-color'] || node.styles?.['--hover-box-shadow']) {
+      rules.push(`.${safeClass(node)}:hover {\n${cssFromObject({
+        backgroundColor: node.styles['--hover-background-color'],
+        color: node.styles['--hover-color'],
+        borderColor: node.styles['--hover-border-color'],
+        boxShadow: node.styles['--hover-box-shadow'],
+      })}\n}`);
     }
     if (node.animation?.type && node.animation.type !== 'none') {
       rules.push(`.${safeClass(node)} {\n  animation: ${kebab(node.animation.type)} ${node.animation.duration || 700}ms ${node.animation.easing || 'ease-out'} ${node.animation.delay || 0}ms both;\n}`);
@@ -374,7 +415,7 @@ export const exportReact = (project = {}) => {
     if (node.type === NODE_TYPES.IMAGE) {
       attrParts.push(`src="${props.src || ''}"`, `alt="${props.alt || node.name || 'Image'}"`, 'loading="lazy"');
     }
-    if ([NODE_TYPES.BUTTON, NODE_TYPES.NAV_LINK, NODE_TYPES.FOOTER_LINK, NODE_TYPES.WHATSAPP_BUTTON].includes(node.type)) {
+    if ([NODE_TYPES.BUTTON, NODE_TYPES.NAV_LINK, NODE_TYPES.FOOTER_LINK, NODE_TYPES.WHATSAPP_BUTTON].includes(node.type) || (TEXT_NODE_TYPES.has(node.type) && props.href)) {
       attrParts.push(`href="${props.href || props.scrollTo || '#'}"`);
       if (props.target === '_blank') attrParts.push('target="_blank" rel="noopener noreferrer"');
     }

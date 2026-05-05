@@ -12,6 +12,7 @@ function LayoutWrapper({ children }) {
   const isLandingPage = location.pathname === '/';
   const isEditorPage = 
     location.pathname.startsWith('/builder/') || 
+    location.pathname.startsWith('/workspace/') ||
     location.pathname.startsWith('/preview/') ||
     ['/website-builder', '/design-2d', '/animations', '/three-d-visuals'].includes(location.pathname) ||
     ['/dashboard/website-builder', '/dashboard/design-2d', '/dashboard/design-3d', '/dashboard/animations'].includes(location.pathname);

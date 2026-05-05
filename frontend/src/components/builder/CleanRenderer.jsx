@@ -1,16 +1,17 @@
 import { memo } from 'react';
+import * as LucideIcons from 'lucide-react';
 import { NODE_TYPES, TEXT_NODE_TYPES, CONTAINER_NODE_TYPES, LAYOUT_MODES, NODE_TAG_MAP } from '../../data/nodeSchema';
 import { responsiveHidden, responsiveStylesFor } from '../../utils/renderHelpers';
-import * as LucideIcons from 'lucide-react';
 
-const CleanRenderer = memo(({ nodeId, nodesMap, device = 'desktop' }) => {
+const CleanRenderer = memo(({ nodeId, nodesMap, device = 'desktop', onLinkClick, project }) => {
   const node = nodesMap[nodeId];
   if (!node || node.hidden || responsiveHidden(node, device)) return null;
 
   const Tag = NODE_TAG_MAP[node.type] || 'div';
 
   // ─── STYLES & LAYOUT ─────────────────────────────────────
-  const baseStyles = { ...node.styles, ...responsiveStylesFor(node, device) };
+  const baseStyles = { ...(node.styles || {}) };
+  const activeResponsiveStyles = responsiveStylesFor(node, device);
   
   if (node.layout) {
     if (node.layout.positionMode === LAYOUT_MODES.FREE) {
@@ -42,9 +43,12 @@ const CleanRenderer = memo(({ nodeId, nodesMap, device = 'desktop' }) => {
       if (node.layout.gridTemplateColumns) baseStyles.gridTemplateColumns = node.layout.gridTemplateColumns;
       if (node.layout.gap) baseStyles.gap = node.layout.gap;
     } else if (node.layout.positionMode === LAYOUT_MODES.FREE) {
-      baseStyles.position = 'relative'; 
+      baseStyles.position = baseStyles.position || 'relative';
     }
+    if (!baseStyles.position) baseStyles.position = 'relative';
   }
+
+  Object.assign(baseStyles, activeResponsiveStyles);
 
   // ─── RENDER SPECIFIC TYPES ───────────────────────────────
 
@@ -55,7 +59,7 @@ const CleanRenderer = memo(({ nodeId, nodesMap, device = 'desktop' }) => {
           src={node.props.src || 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=900&auto=format&fit=crop'}
           alt={node.props.alt || 'Image'}
           className="h-full w-full object-cover"
-          style={{ objectFit: node.props.objectFit || 'cover' }}
+          style={{ objectFit: node.props.objectFit || 'cover', objectPosition: node.props.objectPosition || 'center' }}
         />
       </div>
     );
@@ -136,21 +140,70 @@ const CleanRenderer = memo(({ nodeId, nodesMap, device = 'desktop' }) => {
   }
 
   if (TEXT_NODE_TYPES.has(node.type)) {
-    const linkProps = [NODE_TYPES.BUTTON, NODE_TYPES.NAV_LINK, NODE_TYPES.FOOTER_LINK, NODE_TYPES.WHATSAPP_BUTTON].includes(node.type)
-      ? { href: node.props?.href || '#', target: node.props?.target || '_self', rel: node.props?.target === '_blank' ? 'noopener noreferrer' : undefined }
-      : {};
+    const isLink = [NODE_TYPES.BUTTON, NODE_TYPES.NAV_LINK, NODE_TYPES.FOOTER_LINK, NODE_TYPES.WHATSAPP_BUTTON].includes(node.type) || Boolean(node.props?.href);
+    const linkAction = node.props?.linkAction;
+    const RenderTag = Boolean(node.props?.href) && ![NODE_TYPES.BUTTON, NODE_TYPES.NAV_LINK, NODE_TYPES.FOOTER_LINK, NODE_TYPES.WHATSAPP_BUTTON].includes(node.type) ? 'a' : Tag;
+    
+    let linkProps = {};
+    if (isLink) {
+      if (linkAction?.type === 'internal' && onLinkClick && linkAction.path) {
+        linkProps = {
+          href: linkAction.path,
+          onClick: (e) => {
+            e.preventDefault();
+            const slug = linkAction.path.replace(/^\//, '');
+            onLinkClick(slug || 'home');
+          }
+        };
+      } else {
+        linkProps = { 
+          href: node.props?.href || '#', 
+          target: node.props?.target || '_self', 
+          rel: node.props?.target === '_blank' ? 'noopener noreferrer' : undefined 
+        };
+      }
+    }
+
     return (
-      <Tag style={baseStyles} className="break-words" {...linkProps}>
+      <RenderTag style={baseStyles} className="break-words" {...linkProps}>
         <span dangerouslySetInnerHTML={{ __html: node.content }} />
-      </Tag>
+      </RenderTag>
     );
   }
 
   if (CONTAINER_NODE_TYPES.has(node.type)) {
+    // Phase 4: Auto-populate navbar links
+    let childrenIds = node.children || [];
+    let autoLinks = [];
+    
+    if ((node.type === NODE_TYPES.NAVBAR || node.type === 'navigation' || node.type === 'container') && node.props?.autoPopulatePages) {
+      const pages = project?.pages || [];
+      autoLinks = pages.map((page) => ({
+        id: `auto-link-${page.id}`,
+        type: NODE_TYPES.NAV_LINK,
+        content: page.name,
+        props: {
+          linkAction: { type: 'internal', pageId: page.id, path: page.path }
+        },
+        styles: {
+          padding: '8px 16px',
+          color: 'inherit',
+          textDecoration: 'none',
+          fontWeight: 'bold',
+          fontSize: '14px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em'
+        }
+      }));
+    }
+
     return (
       <Tag style={baseStyles}>
-        {node.children?.map((childId) => (
-          <CleanRenderer key={childId} nodeId={childId} nodesMap={nodesMap} device={device} />
+        {childrenIds.map((childId) => (
+          <CleanRenderer key={childId} nodeId={childId} nodesMap={nodesMap} device={device} onLinkClick={onLinkClick} project={project} />
+        ))}
+        {autoLinks.map((autoNode) => (
+          <CleanRenderer key={autoNode.id} nodeId={autoNode.id} nodesMap={{ ...nodesMap, [autoNode.id]: autoNode }} device={device} onLinkClick={onLinkClick} project={project} />
         ))}
       </Tag>
     );

@@ -1,9 +1,9 @@
-import React from 'react';
-import { Monitor, Smartphone, Tablet } from 'lucide-react';
+import { Laptop, Monitor, Smartphone, Tablet } from 'lucide-react';
 import { useBuilderStore } from '../../store/builderStore';
 
 const devices = [
   { id: 'desktop', label: 'Desktop', icon: Monitor },
+  { id: 'laptop', label: 'Laptop', icon: Laptop },
   { id: 'tablet', label: 'Tablet', icon: Tablet },
   { id: 'mobile', label: 'Mobile', icon: Smartphone },
 ];

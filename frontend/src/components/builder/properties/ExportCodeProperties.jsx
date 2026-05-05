@@ -19,6 +19,18 @@ const copyToClipboard = async (text) => {
   document.body.removeChild(textarea);
 };
 
+const downloadTextFile = (filename, text) => {
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+};
+
 export default function ExportCodeProperties() {
   const { showToast, nodesMap, project } = useBuilderStore();
   const [generated, setGenerated] = useState(null);
@@ -51,7 +63,11 @@ export default function ExportCodeProperties() {
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <MiniButton onClick={() => showToast('ZIP download is structured as the next export adapter.')}>Download ZIP</MiniButton>
+        <MiniButton onClick={() => {
+          if (!generated?.html) return showToast('HTML is still generating.', 'error');
+          downloadTextFile('shopcraft-site.html', generated.html);
+          showToast('HTML file downloaded.', 'success');
+        }}>Download HTML</MiniButton>
         <MiniButton onClick={() => handleCopy('Asset manifest', JSON.stringify(generated?.assets || [], null, 2))}>Assets</MiniButton>
       </div>
 

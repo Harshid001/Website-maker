@@ -1,10 +1,12 @@
 import { useBuilderStore } from '../../../store/builderStore';
+import { responsiveStylesFor } from '../../../utils/renderHelpers';
 import { ColorInput, MiniButton, PropertyGroup, SelectInput, TextInput } from './PropertyControls';
 
 export default function BackgroundProperties() {
-  const { selectedItem, getSelectedNode, updateSelectedStyles, showToast } = useBuilderStore();
+  const { activeDevice, selectedItem, getSelectedNode, updateSelectedStyles } = useBuilderStore();
   const selectedNode = getSelectedNode;
-  const styles = (selectedNode || selectedItem)?.styles || {};
+  const item = selectedNode || selectedItem;
+  const styles = item ? { ...(item.styles || {}), ...responsiveStylesFor(item, activeDevice) } : {};
 
   return (
     <PropertyGroup title="Background">
@@ -27,8 +29,13 @@ export default function BackgroundProperties() {
       <div className="grid grid-cols-2 gap-2">
         <MiniButton onClick={() => updateSelectedStyles({ backdropFilter: 'blur(18px)', backgroundColor: 'rgba(255,255,255,0.72)' })}>Glass</MiniButton>
         <MiniButton onClick={() => updateSelectedStyles({ backgroundAttachment: 'fixed' })}>Parallax BG</MiniButton>
-        <MiniButton onClick={() => showToast('Video backgrounds require a video URL. Use the Integrations panel to embed a YouTube/Vimeo video, or add a video element behind your section.')}>Video BG</MiniButton>
-        <MiniButton onClick={() => showToast('Pattern backgrounds: Use a repeating SVG or PNG pattern URL in the Image URL field above with BG repeat set to "repeat".')}>Pattern BG</MiniButton>
+        <MiniButton onClick={() => updateSelectedStyles({
+          backgroundImage: 'linear-gradient(45deg, rgba(99,102,241,.18) 25%, transparent 25%, transparent 75%, rgba(99,102,241,.18) 75%), linear-gradient(45deg, rgba(99,102,241,.18) 25%, transparent 25%, transparent 75%, rgba(99,102,241,.18) 75%)',
+          backgroundSize: '24px 24px',
+          backgroundPosition: '0 0, 12px 12px',
+          backgroundRepeat: 'repeat',
+        })}>Pattern BG</MiniButton>
+        <MiniButton onClick={() => updateSelectedStyles({ backgroundImage: '', backgroundAttachment: 'scroll', backgroundRepeat: 'no-repeat' })}>Clear BG FX</MiniButton>
       </div>
     </PropertyGroup>
   );

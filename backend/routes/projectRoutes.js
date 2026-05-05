@@ -7,7 +7,10 @@ const {
   deleteProject,
 } = require('../controllers/projectController');
 const { protect } = require('../middleware/authMiddleware');
+const pageRoutes = require('./pageRoutes');
 const router = express.Router();
+
+router.use('/:projectId/pages', pageRoutes);
 
 router.route('/')
   .get(protect, getProjects)

@@ -10,9 +10,12 @@ const projectSchema = mongoose.Schema(
       enum: ['website', 'design2d', 'animation', 'model3d'] 
     },
     content: { type: Object, required: true },
+    pages: { type: Array, default: [] },
+    currentPageId: { type: String },
+    seo: { type: Object, default: {} },
     interactions: { type: Array, default: [] },
     routes: { type: Array, default: [] },
-    nodes: { type: Object, default: {} },
+    nodesMap: { type: Object, default: {} },
     thumbnail: { type: String },
     status: { type: String, default: 'draft' },
     projectName: { type: String },

@@ -50,8 +50,8 @@ export default function FormProperties() {
 
       <div className="grid grid-cols-2 gap-2">
         <MiniButton onClick={() => { updateSelectedProps({ saveToDatabase: true }); showToast('Responses will be saved when a backend endpoint is connected.'); }}>Save response</MiniButton>
-        <MiniButton onClick={() => { updateSelectedProps({ spamProtection: true }); showToast('Spam protection placeholder configured (reCAPTCHA/honeypot).'); }}>Spam protect</MiniButton>
-        <MiniButton onClick={() => showToast('Form backend integration placeholder saved. Connect an API endpoint in Settings → Publishing when ready.')}>Form integration</MiniButton>
+        <MiniButton onClick={() => { updateSelectedProps({ spamProtection: true, spamMethod: props.spamMethod || 'honeypot' }); showToast('Spam protection enabled.'); }}>Spam protect</MiniButton>
+        <MiniButton onClick={() => { updateSelectedProps({ integrationEnabled: true, endpoint: props.endpoint || '' }); showToast('Form integration enabled. Add an endpoint when ready.'); }}>Form integration</MiniButton>
         <MiniButton onClick={() => { updateSelectedProps({ emailNotification: true }); showToast('Email notification enabled. Configure receiver email above.'); }}>Email notify</MiniButton>
       </div>
     </PropertyGroup>

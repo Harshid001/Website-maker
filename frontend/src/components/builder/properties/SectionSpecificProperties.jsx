@@ -26,7 +26,6 @@ export default function SectionSpecificProperties() {
     deleteNodeFromMap,
     hideNodeInMap,
     lockNodeInMap,
-    showToast,
   } = useBuilderStore();
 
   const node = getSelectedNode;
@@ -107,6 +106,7 @@ export default function SectionSpecificProperties() {
             <TextInput label="Align" value={styles.alignItems || layout.alignItems || 'center'} onChange={(value) => { updateStyle('alignItems')(value); updateLayout('alignItems')(value); }} />
           </div>
           <ToggleInput label="Sticky navbar" checked={props.sticky} onChange={applyStickyNavbar} />
+          <ToggleInput label="Auto-populate pages" checked={props.autoPopulatePages} onChange={updateProp('autoPopulatePages')} />
         </>
       )}
 
@@ -137,7 +137,7 @@ export default function SectionSpecificProperties() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <MiniButton onClick={() => childNodes.filter((child) => child.type?.toLowerCase().includes('card')).forEach((child) => updateNodeStylesInMap(child.id, { borderRadius: '18px', boxShadow: '0 18px 45px rgba(15, 23, 42, 0.12)' }))}>Polish Cards</MiniButton>
-            <MiniButton onClick={() => showToast('Slider layout is stored as a setting and ready for the carousel renderer.')}>Slider Ready</MiniButton>
+            <MiniButton onClick={() => { updateNodePropsInMap(node.id, { cardLayout: 'slider' }); updateNodeStylesInMap(node.id, { display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory' }); }}>Slider Ready</MiniButton>
           </div>
         </>
       )}

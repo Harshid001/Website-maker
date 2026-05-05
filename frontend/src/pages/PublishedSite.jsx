@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import PublishedWebsiteView from '../components/builder/PublishedWebsiteView';
 import { BuilderProvider, useBuilderStore } from '../store/builderStore';
 import { projectStorage } from '../services/projectStorage';
 
 function PublishedSiteInner({ project, pageSlug }) {
+  const navigate = useNavigate();
   const { project: liveProject, switchPage } = useBuilderStore();
 
   useEffect(() => {
@@ -22,7 +23,7 @@ function PublishedSiteInner({ project, pageSlug }) {
     document.head.appendChild(description);
   }, [project]);
 
-  return <PublishedWebsiteView device="desktop" runtimeMode="published" />;
+  return <PublishedWebsiteView device="desktop" runtimeMode="published" onNavigate={(slug) => navigate(`/site/${project.slug}/${slug}`)} />;
 }
 
 export default function PublishedSite() {

@@ -12,6 +12,11 @@ import PublishedSite from '../pages/PublishedSite';
 import Design2DStudio from '../pages/Design2DStudio';
 import AnimationStudio from '../pages/AnimationStudio';
 import Model3DStudio from '../pages/Model3DStudio';
+import Workspace from '../pages/Workspace';
+import WebsiteWorkspace from '../pages/WebsiteWorkspace';
+import DesignWorkspace from '../pages/DesignWorkspace';
+import ThreeWorkspace from '../pages/ThreeWorkspace';
+import AnimationWorkspace from '../pages/AnimationWorkspace';
 import Templates from '../pages/Templates';
 import Favorites from '../pages/Favorites';
 import MyProjects from '../pages/MyProjects';
@@ -48,6 +53,7 @@ const AppRoutes = () => {
       {/* Legacy/Alias Tool Routes */}
       <Route path="/builder/website" element={<WebsiteBuilder />} />
       <Route path="/builder/website/:projectId" element={<WebsiteBuilder />} />
+      <Route path="/builder/website/:projectId/page/:pageId" element={<WebsiteBuilder />} />
       <Route path="/builder/design-2d" element={<Design2DStudio />} />
       <Route path="/builder/animation" element={<AnimationStudio />} />
       <Route path="/builder/model-3d" element={<Model3DStudio />} />
@@ -58,6 +64,12 @@ const AppRoutes = () => {
       <Route path="/three-d-visuals" element={<Model3DStudio />} />
       
       <Route path="/templates" element={<Templates />} />
+      <Route path="/templates/:unused" element={<Templates />} />
+      <Route path="/workspace/:projectId" element={<Workspace />} />
+      <Route path="/workspace/website/:projectId" element={<WebsiteWorkspace />} />
+      <Route path="/workspace/design/:projectId" element={<DesignWorkspace />} />
+      <Route path="/workspace/3d/:projectId" element={<ThreeWorkspace />} />
+      <Route path="/workspace/animation/:projectId" element={<AnimationWorkspace />} />
       <Route path="/favorites" element={<Favorites />} />
       <Route path="/my-projects" element={<MyProjects />} />
       <Route path="/tutorials" element={<Tutorials />} />

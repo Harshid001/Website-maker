@@ -4,6 +4,7 @@ import LeftSidebar from './LeftSidebar';
 import LeftToolPanel from './LeftToolPanel';
 import RightPropertiesPanel from './RightPropertiesPanel';
 import WebsiteCanvas from './WebsiteCanvas';
+import RoutingMapView from './RoutingMapView';
 import { useBuilderStore } from '../../store/builderStore';
 import InteractionModal from './prototype/InteractionModal';
 import ContextMenu from './ContextMenu';
@@ -16,6 +17,7 @@ export default function BuilderLayout() {
     leftPanelCollapsed,
     rightPanelCollapsed,
     fullscreenCanvas,
+    canvasView,
     setLeftPanelCollapsed,
     setRightPanelCollapsed,
     clearSelection,
@@ -200,7 +202,7 @@ export default function BuilderLayout() {
           )}
           <div className="pointer-events-none absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
           <div className="relative z-10 h-full">
-            <WebsiteCanvas />
+            {canvasView === 'routing' ? <RoutingMapView /> : <WebsiteCanvas />}
           </div>
           <BottomCanvasToolbar />
         </main>

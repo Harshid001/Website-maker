@@ -4,10 +4,10 @@ import BuilderLayout from '../components/builder/BuilderLayout';
 import { BuilderProvider } from '../store/builderStore';
 
 export default function WebsiteBuilder() {
-  const { projectId } = useParams();
+  const { projectId, pageId } = useParams();
 
   return (
-    <BuilderProvider projectId={projectId}>
+    <BuilderProvider projectId={projectId} initialPageId={pageId}>
       <BuilderLayout />
     </BuilderProvider>
   );

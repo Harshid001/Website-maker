@@ -366,6 +366,39 @@ export const dragNode = (nodesMap, nodeId, position) => {
 };
 
 /**
+ * Move a node to a parent and store absolute placement metadata in one commit.
+ */
+export const placeNode = (nodesMap, nodeId, newParentId, placement = {}) => {
+  const node = nodesMap[nodeId];
+  if (!node || node.locked) return nodesMap;
+
+  const moved = newParentId && newParentId !== node.parentId
+    ? moveNode(nodesMap, nodeId, newParentId, placement.index ?? -1)
+    : nodesMap;
+  const latest = moved[nodeId];
+  if (!latest) return moved;
+
+  const responsive = { ...(latest.responsive || {}) };
+  for (const [device, styles] of Object.entries(placement.responsive || {})) {
+    responsive[device] = { ...(responsive[device] || {}), ...(styles || {}) };
+  }
+
+  return updateNode(moved, nodeId, {
+    layout: {
+      ...(latest.layout || {}),
+      positionMode: LAYOUT_MODES.FREE,
+      x: Math.round(Number(placement.x) || 0),
+      y: Math.round(Number(placement.y) || 0),
+      width: placement.width ?? latest.layout?.width ?? 'auto',
+      height: placement.height ?? latest.layout?.height ?? 'auto',
+      zIndex: placement.zIndex ?? latest.layout?.zIndex ?? 'auto',
+      parentSectionId: placement.parentSectionId || newParentId || latest.parentId,
+    },
+    responsive,
+  });
+};
+
+/**
  * Resize a node.
  */
 export const resizeNode = (nodesMap, nodeId, size) => {
@@ -408,21 +441,6 @@ export const duplicateNode = (nodesMap, nodeId) => {
 
   const rootClone = cloneWithNewIds(nodeId);
   if (!rootClone) return { nodesMap, newNodeId: null };
-
-  // Set parent IDs
-  const setParentIds = (clone, parentId) => {
-    clone.parentId = parentId;
-    for (const childId of clone.children || []) {
-      const childOriginalId = Object.entries(idMapping).find(([, v]) => v === childId)?.[0];
-      if (childOriginalId && nodesMap[childOriginalId]) {
-        const childClone = { ...deepClone(nodesMap[childOriginalId]), id: childId };
-        childClone.children = (nodesMap[childOriginalId].children || [])
-          .map((cid) => idMapping[cid])
-          .filter(Boolean);
-        setParentIds(childClone, clone.id);
-      }
-    }
-  };
 
   // Collect all cloned nodes
   const clonedNodes = {};
@@ -596,6 +614,38 @@ export const sendToBack = (nodesMap, nodeId) => {
 };
 
 /**
+ * Move a node one layer forward within its parent's stacking order.
+ */
+export const bringForward = (nodesMap, nodeId) => {
+  const node = nodesMap[nodeId];
+  if (!node?.parentId) return nodesMap;
+  const parent = { ...nodesMap[node.parentId] };
+  const children = [...(parent.children || [])];
+  const index = children.indexOf(nodeId);
+  if (index < 0 || index >= children.length - 1) return nodesMap;
+  children.splice(index, 1);
+  children.splice(index + 1, 0, nodeId);
+  parent.children = children;
+  return { ...nodesMap, [parent.id]: parent };
+};
+
+/**
+ * Move a node one layer backward within its parent's stacking order.
+ */
+export const sendBackward = (nodesMap, nodeId) => {
+  const node = nodesMap[nodeId];
+  if (!node?.parentId) return nodesMap;
+  const parent = { ...nodesMap[node.parentId] };
+  const children = [...(parent.children || [])];
+  const index = children.indexOf(nodeId);
+  if (index <= 0) return nodesMap;
+  children.splice(index, 1);
+  children.splice(index - 1, 0, nodeId);
+  parent.children = children;
+  return { ...nodesMap, [parent.id]: parent };
+};
+
+/**
  * Align multiple nodes along an axis.
  * Requires DOM measurements (bounding boxes) to be passed in.
  * @param {object} nodesMap
@@ -607,6 +657,7 @@ export const alignNodes = (nodesMap, nodeIds, direction, boundingBoxes = {}) => 
   if (nodeIds.length < 2) return nodesMap;
 
   const boxes = nodeIds.map((id) => ({ id, ...(boundingBoxes[id] || { x: 0, y: 0, width: 0, height: 0 }) }));
+  const hasMeasurements = Object.keys(boundingBoxes || {}).length > 0;
   let next = { ...nodesMap };
 
   const allLeft = boxes.map((b) => b.x);
@@ -631,7 +682,12 @@ export const alignNodes = (nodesMap, nodeIds, direction, boundingBoxes = {}) => 
     }
 
     next = updateNode(next, box.id, {
-      layout: { ...(node.layout || {}), x: newX, y: newY },
+      layout: {
+        ...(node.layout || {}),
+        ...(hasMeasurements ? { positionMode: LAYOUT_MODES.FREE } : {}),
+        x: Math.round(newX),
+        y: Math.round(newY),
+      },
     });
   }
 
@@ -665,7 +721,7 @@ export const distributeNodes = (nodesMap, nodeIds, direction, boundingBoxes = {}
     for (const box of boxes) {
       const node = next[box.id];
       if (node && !node.locked) {
-        next = updateNode(next, box.id, { layout: { ...(node.layout || {}), x: currentX } });
+        next = updateNode(next, box.id, { layout: { ...(node.layout || {}), positionMode: LAYOUT_MODES.FREE, x: Math.round(currentX) } });
       }
       currentX += box.width + gap;
     }
@@ -680,7 +736,7 @@ export const distributeNodes = (nodesMap, nodeIds, direction, boundingBoxes = {}
     for (const box of boxes) {
       const node = next[box.id];
       if (node && !node.locked) {
-        next = updateNode(next, box.id, { layout: { ...(node.layout || {}), y: currentY } });
+        next = updateNode(next, box.id, { layout: { ...(node.layout || {}), positionMode: LAYOUT_MODES.FREE, y: Math.round(currentY) } });
       }
       currentY += box.height + gap;
     }

@@ -1,4 +1,5 @@
 const aiService = require('../utils/aiService');
+const { proxyToAiService } = require('../services/aiProxy.service');
 
 const generateWebsiteContent = async (req, res) => {
     try {
@@ -86,10 +87,34 @@ const generateDesignText = async (req, res) => {
     }
 };
 
+const chat = async (req, res) => {
+    const response = await proxyToAiService('/api/ai/chat', req.body);
+    res.status(200).json(response);
+};
+
+const generateTemplate = async (req, res) => {
+    const response = await proxyToAiService('/api/ai/generate-template', req.body);
+    res.status(200).json(response);
+};
+
+const suggestLayout = async (req, res) => {
+    const response = await proxyToAiService('/api/ai/suggest-layout', req.body);
+    res.status(200).json(response);
+};
+
+const improveCopy = async (req, res) => {
+    const response = await proxyToAiService('/api/ai/improve-copy', req.body);
+    res.status(200).json(response);
+};
+
 module.exports = {
     generateWebsiteContent,
     generateSEO,
     suggestTemplate,
     suggestAnimation,
-    generateDesignText
+    generateDesignText,
+    chat,
+    generateTemplate,
+    suggestLayout,
+    improveCopy
 };

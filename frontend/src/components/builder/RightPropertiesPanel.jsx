@@ -7,6 +7,7 @@ import DesignProperties from './properties/DesignProperties';
 import BackgroundProperties from './properties/BackgroundProperties';
 import MediaProperties from './properties/MediaProperties';
 import ButtonProperties from './properties/ButtonProperties';
+import LinkSettingsProperties from './properties/LinkSettingsProperties';
 import SEOProperties from './properties/SEOProperties';
 import AnimationProperties from './properties/AnimationProperties';
 import ResponsiveProperties from './properties/ResponsiveProperties';
@@ -23,6 +24,7 @@ export default function RightPropertiesPanel() {
   const { builderMode, getSelectedNode, selectedNodeIds, selectedInteraction } = useBuilderStore();
   const node = getSelectedNode;
   const isMultiSelect = selectedNodeIds.length > 1;
+  const hasSelection = Boolean(node || selectedInteraction || isMultiSelect);
 
   return (
     <aside className="w-[360px] shrink-0 overflow-y-auto border-l border-slate-800 bg-slate-900 custom-scrollbar">
@@ -33,15 +35,15 @@ export default function RightPropertiesPanel() {
         </div>
         <SlidersHorizontal size={18} className="text-slate-500" />
       </div>
-      {!node && !selectedInteraction && !isMultiSelect && (
-        <div className="border-b border-slate-800 p-5">
-          <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950 p-4 text-xs leading-5 text-slate-500">
-            Page frame settings are shown below. Select a section or element on the canvas to edit layout, content, style, media, animation, and responsive settings.
+      {!hasSelection && (
+        <div className="p-5">
+          <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950 p-5 text-sm leading-6 text-slate-400">
+            Select an element to edit its properties.
           </div>
         </div>
       )}
       {selectedInteraction && <InteractionProperties />}
-      {!selectedInteraction && !isMultiSelect && <SelectionProperties />}
+      {node && !selectedInteraction && !isMultiSelect && <SelectionProperties />}
       {builderMode === 'prototype' && node && !isMultiSelect && <InteractionProperties />}
       
       {isMultiSelect && (
@@ -57,6 +59,7 @@ export default function RightPropertiesPanel() {
           <TextProperties />
           <DesignProperties />
           <ButtonProperties />
+          <LinkSettingsProperties />
           <MediaProperties />
           <SEOProperties />
           <AnimationProperties />
@@ -68,8 +71,7 @@ export default function RightPropertiesPanel() {
           <AccessibilityProperties />
         </>
       )}
-      {!node && !selectedInteraction && !isMultiSelect && <SEOProperties />}
-      <ExportCodeProperties />
+      {hasSelection && <ExportCodeProperties />}
     </aside>
   );
 }

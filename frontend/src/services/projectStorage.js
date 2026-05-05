@@ -184,17 +184,13 @@ export const getPublishedSite = (slug) => {
 };
 
 export const createBlankProject = () => {
-  const demoSeedVersion = 6;
+  const demoSeedVersion = 7;
   const projects = listProjects();
   const existing = projects.find((project) => project.id === 'demo-website-project');
   if (existing?.settings?.demoSeedVersion === demoSeedVersion) return existing;
 
-  const homeSections = cloneSections(['navbar', 'hero', 'services', 'contact', 'footer']);
   const pages = [
-    createBlankPage('Home', { isHome: true, slug: 'home', path: '/', sections: homeSections }),
-    createBlankPage('About', { slug: 'about', path: '/about', sections: cloneSections(['about', 'team', 'footer']) }),
-    createBlankPage('Services', { slug: 'services', path: '/services', sections: cloneSections(['services', 'pricing', 'faq', 'footer']) }),
-    createBlankPage('Contact', { slug: 'contact', path: '/contact', sections: cloneSections(['contact', 'footer']) }),
+    createBlankPage('Home', { isHome: true, slug: 'home', path: '/', sections: [] }),
   ];
 
   return createProject({
@@ -213,6 +209,28 @@ export const createBlankProject = () => {
   });
 };
 
+export const createProjectFromTemplate = (template) => {
+  const homeSections = template.sectionTypes?.length 
+    ? cloneSections(template.sectionTypes) 
+    : cloneSections(['navbar', 'hero', 'contact', 'footer']);
+    
+  const pages = [
+    createBlankPage('Home', { isHome: true, slug: 'home', path: '/', sections: homeSections }),
+  ];
+
+  return createProject({
+    name: template.title,
+    slug: slugify(template.title),
+    category: template.category,
+    businessDetails: { websiteName: template.title },
+    theme: getThemePreset(template.themeId || 'modern-dark'),
+    pages,
+    currentPageId: pages[0].id,
+    sections: pages[0].sections,
+    workspaceType: template.workspaceType || 'website-builder'
+  });
+};
+
 export const createDemoProject = createBlankProject;
 
 export const projectStorage = {
@@ -226,5 +244,6 @@ export const projectStorage = {
   getPublishedSite,
   createBlankProject,
   createDemoProject,
+  createProjectFromTemplate,
   normalizeProject,
 };

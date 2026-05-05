@@ -15,6 +15,7 @@ export default function WorkspaceLayout({
   onSave,
   onPreview,
   onPublish,
+  publishLabel = "Publish",
   leftPanel,
   rightPanel
 }) {
@@ -66,7 +67,7 @@ export default function WorkspaceLayout({
             className="flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-white bg-indigo-600 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
           >
             <Rocket size={16} /> 
-            <span className="hidden sm:inline">Publish</span>
+            <span className="hidden sm:inline">{publishLabel}</span>
           </button>
         </div>
       </header>

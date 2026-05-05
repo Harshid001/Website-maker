@@ -40,7 +40,7 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
   } = useSortable({
     id: nodeId,
     data: { type: 'node', node },
-    disabled: isPreview || node?.locked || activeTool !== 'select',
+    disabled: activeTool !== 'hand' || isEditing || node.locked,
   });
 
   // Keep contentEditable in sync with state when not editing
@@ -72,16 +72,25 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
       return;
     }
 
-    if (activeTool === 'hand') return;
-
-    if (e.shiftKey) {
-      if (isSelected) {
-        selectNodes(selectedNodeIds.filter((id) => id !== nodeId));
+    if (activeTool === 'select') {
+      if (e.shiftKey) {
+        if (isSelected) {
+          selectNodes(selectedNodeIds.filter((id) => id !== nodeId));
+        } else {
+          selectNodes([...selectedNodeIds, nodeId]);
+        }
       } else {
-        selectNodes([...selectedNodeIds, nodeId]);
+        selectNode(nodeId);
       }
-    } else {
-      selectNode(nodeId);
+      return;
+    }
+
+    if (activeTool === 'hand') {
+      e.stopPropagation();
+      if (!isSelected) {
+        selectNode(nodeId);
+      }
+      return;
     }
   };
 
@@ -89,7 +98,7 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
     if (isPreview) return;
     e.stopPropagation();
     
-    if (TEXT_NODE_TYPES.has(node.type) && !node.locked) {
+    if (activeTool === 'select' && TEXT_NODE_TYPES.has(node.type) && !node.locked) {
       setEditingNodeId(nodeId);
       setTimeout(() => {
         if (contentEditableRef.current) {
@@ -127,7 +136,8 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
   const Tag = NODE_TAG_MAP[node.type] || 'div';
 
   // ─── STYLES & LAYOUT ─────────────────────────────────────
-  const baseStyles = { ...node.styles, ...responsiveStylesFor(node, activeDevice) };
+  const baseStyles = { ...(node.styles || {}) };
+  const activeResponsiveStyles = responsiveStylesFor(node, activeDevice);
   
   // Position Mode logic
   if (node.layout) {
@@ -161,9 +171,12 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
       if (node.layout.gridTemplateColumns) baseStyles.gridTemplateColumns = node.layout.gridTemplateColumns;
       if (node.layout.gap) baseStyles.gap = node.layout.gap;
     } else if (node.layout.positionMode === LAYOUT_MODES.FREE) {
-      baseStyles.position = 'relative'; // so children can be absolute relative to this
+      baseStyles.position = baseStyles.position || 'relative';
     }
+    if (!baseStyles.position) baseStyles.position = 'relative';
   }
+
+  Object.assign(baseStyles, activeResponsiveStyles);
 
   // Merge drag transform
   const dragTransform = CSS.Transform.toString(transform);
@@ -178,6 +191,9 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
   let editorClasses = '';
   if (!isPreview) {
     editorClasses = 'group/node relative transition-[box-shadow] duration-200 ';
+    editorClasses += activeTool === 'hand'
+      ? 'cursor-grab active:cursor-grabbing '
+      : 'cursor-pointer ';
     if (isSelected) {
       editorClasses += isRootSection
         ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-white z-20 '
@@ -207,7 +223,7 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
           src={node.props.src || 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=900&auto=format&fit=crop'}
           alt={node.props.alt || 'Placeholder'}
           className="h-full w-full object-cover"
-          style={{ objectFit: node.props.objectFit || 'cover' }}
+          style={{ objectFit: node.props.objectFit || 'cover', objectPosition: node.props.objectPosition || 'center' }}
           draggable={false}
         />
         {!isPreview && isOnlySelected && RESIZABLE_NODE_TYPES.has(node.type) && <ResizeHandles nodeId={nodeId} />}
@@ -713,8 +729,18 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
   }
 
   if (TEXT_NODE_TYPES.has(node.type)) {
+    const linkTypes = [NODE_TYPES.BUTTON, NODE_TYPES.NAV_LINK, NODE_TYPES.FOOTER_LINK, NODE_TYPES.WHATSAPP_BUTTON];
+    const hasHref = Boolean(node.props?.href);
+    const RenderTag = hasHref && !linkTypes.includes(node.type) ? 'a' : Tag;
+    const linkProps = (hasHref || linkTypes.includes(node.type))
+      ? {
+          href: isPreview ? (node.props?.href || '#') : undefined,
+          target: isPreview ? (node.props?.target || '_self') : undefined,
+          rel: isPreview && node.props?.target === '_blank' ? 'noopener noreferrer' : undefined,
+        }
+      : {};
     return (
-      <Tag
+      <RenderTag
         ref={setNodeRef}
         data-node-id={nodeId}
         style={style}
@@ -722,6 +748,7 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
         onPointerDown={handlePointerDown}
         onContextMenu={handleContextMenu}
         onDoubleClick={handleDoubleClick}
+        {...linkProps}
         {...(!isEditing ? attributes : {})}
         {...(!isEditing ? listeners : {})}
       >
@@ -736,7 +763,7 @@ const NodeRenderer = memo(({ nodeId, isPreview = false }) => {
         />
         {!isPreview && isOnlySelected && RESIZABLE_NODE_TYPES.has(node.type) && <ResizeHandles nodeId={nodeId} />}
         {!isPreview && isOnlySelected && <FloatingToolbar nodeId={nodeId} />}
-      </Tag>
+      </RenderTag>
     );
   }
 

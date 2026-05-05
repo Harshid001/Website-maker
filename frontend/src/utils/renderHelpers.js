@@ -1,5 +1,6 @@
 export const deviceWidths = {
   desktop: 1440,
+  laptop: 1024,
   tablet: 768,
   mobile: 390,
 };
@@ -38,6 +39,10 @@ export const responsiveHidden = (item = {}, device = 'desktop') =>
 
 export const responsiveStylesFor = (item = {}, device = 'desktop') => {
   const legacy = {};
+  if (device === 'laptop') {
+    if (item.responsive?.laptopFontSize) legacy.fontSize = item.responsive.laptopFontSize;
+    if (item.responsive?.laptopPadding) legacy.padding = item.responsive.laptopPadding;
+  }
   if (device === 'mobile') {
     if (item.responsive?.mobileFontSize) legacy.fontSize = item.responsive.mobileFontSize;
     if (item.responsive?.mobilePadding) legacy.padding = item.responsive.mobilePadding;

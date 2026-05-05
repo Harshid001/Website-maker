@@ -1,0 +1,205 @@
+import React from 'react';
+
+const L = {
+  booking: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#e2e8f0', label: 'Nav' },
+    { x: 0, y: 12, w: w * 0.55, h: 28, c: '#cbd5e1', label: 'Hero Text' },
+    { x: w * 0.6, y: 12, w: w * 0.38, h: 28, c: '#6366f1', r: 6, label: 'Form' },
+    { x: 0, y: 44, w, h: 6, c: '#e0e7ff', label: 'Stats' },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 54, w: w / 3 - 4, h: 16, c: '#f1f5f9', r: 4 })),
+    { x: 0, y: 74, w, h: 12, c: '#eef2ff', label: 'Testimonials' },
+    { x: 0, y: 90, w, h: 10, c: '#f8fafc', label: 'FAQ' },
+  ],
+  editorial: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#e2e8f0' },
+    { x: w * 0.1, y: 14, w: w * 0.8, h: 18, c: '#1e293b', r: 2, label: 'Editorial Hero' },
+    { x: 0, y: 36, w: w * 0.6, h: 22, c: '#e2e8f0', r: 4 },
+    { x: w * 0.64, y: 36, w: w * 0.34, h: 22, c: '#cbd5e1', r: 4 },
+    { x: 0, y: 62, w: w * 0.48, h: 14, c: '#f1f5f9', r: 4 },
+    { x: w * 0.52, y: 62, w: w * 0.48, h: 14, c: '#f1f5f9', r: 4 },
+    { x: 0, y: 80, w, h: 10, c: '#e2e8f0', label: 'Timeline' },
+    { x: 0, y: 94, w, h: 6, c: '#1e293b' },
+  ],
+  minimal: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#f1f5f9' },
+    { x: w * 0.15, y: 14, w: w * 0.7, h: 22, c: '#e2e8f0', r: 4, label: 'Hero' },
+    { x: 0, y: 40, w, h: 4, c: '#f8fafc' },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 48, w: w / 3 - 4, h: 18, c: '#f1f5f9', r: 4 })),
+    { x: 0, y: 70, w: w * 0.5, h: 14, c: '#e2e8f0', r: 4 },
+    { x: w * 0.54, y: 70, w: w * 0.46, h: 14, c: '#f1f5f9', r: 4 },
+    { x: 0, y: 88, w, h: 12, c: '#f8fafc' },
+  ],
+  saas: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#1e293b' },
+    { x: w * 0.1, y: 12, w: w * 0.8, h: 10, c: '#334155', r: 2 },
+    { x: w * 0.05, y: 24, w: w * 0.9, h: 22, c: '#1e293b', r: 6, label: 'Dashboard' },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 50, w: w / 3 - 4, h: 14, c: '#334155', r: 4 })),
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 68, w: w / 3 - 4, h: 18, c: '#1e293b', r: 4 })),
+    { x: 0, y: 90, w, h: 10, c: '#0f172a' },
+  ],
+  split: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#f1f5f9' },
+    { x: 0, y: 12, w: w * 0.48, h: 30, c: '#e2e8f0', r: 4 },
+    { x: w * 0.52, y: 12, w: w * 0.48, h: 30, c: '#cbd5e1', r: 4 },
+    { x: 0, y: 46, w: w * 0.48, h: 20, c: '#f1f5f9', r: 4 },
+    { x: w * 0.52, y: 46, w: w * 0.48, h: 20, c: '#e2e8f0', r: 4 },
+    { x: 0, y: 70, w, h: 14, c: '#f8fafc', label: 'Testimonials' },
+    { x: 0, y: 88, w, h: 12, c: '#e2e8f0' },
+  ],
+  fullscreen: (w, h) => [
+    { x: 0, y: 0, w, h: 42, c: '#1e293b', label: 'Fullscreen Hero' },
+    { x: w * 0.2, y: 14, w: w * 0.6, h: 10, c: '#475569', r: 2 },
+    { x: 0, y: 46, w, h: 20, c: '#0f172a' },
+    ...Array.from({ length: 4 }, (_, i) => ({ x: i * (w / 4 + 1), y: 48, w: w / 4 - 3, h: 16, c: '#1e293b', r: 4 })),
+    { x: 0, y: 70, w, h: 16, c: '#111827' },
+    { x: 0, y: 90, w, h: 10, c: '#0f172a' },
+  ],
+  luxury: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#1a1a1a' },
+    { x: w * 0.15, y: 12, w: w * 0.7, h: 28, c: '#111', r: 2 },
+    { x: w * 0.3, y: 18, w: w * 0.4, h: 4, c: '#d4af37', r: 2 },
+    { x: 0, y: 44, w: w * 0.48, h: 22, c: '#1a1a1a', r: 4 },
+    { x: w * 0.52, y: 44, w: w * 0.48, h: 22, c: '#1a1a1a', r: 4 },
+    { x: 0, y: 70, w, h: 16, c: '#111' },
+    { x: 0, y: 90, w, h: 10, c: '#0a0a0a' },
+  ],
+  glass: (w, h) => [
+    { x: 0, y: 0, w, h: 100, c: '#1e1b4b' },
+    { x: 0, y: 0, w, h: 8, c: 'rgba(255,255,255,0.08)' },
+    { x: w * 0.1, y: 14, w: w * 0.8, h: 24, c: 'rgba(255,255,255,0.1)', r: 8 },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: w * 0.05 + i * (w / 3), y: 44, w: w / 3 - 8, h: 18, c: 'rgba(255,255,255,0.08)', r: 6 })),
+    { x: w * 0.15, y: 68, w: w * 0.7, h: 16, c: 'rgba(255,255,255,0.06)', r: 8 },
+    { x: w * 0.2, y: 88, w: w * 0.6, h: 8, c: 'rgba(99,102,241,0.3)', r: 4 },
+  ],
+  gradient: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#fce7f3' },
+    { x: 0, y: 12, w, h: 28, c: '#f9a8d4', r: 4 },
+    { x: w * 0.2, y: 18, w: w * 0.6, h: 10, c: '#ec4899', r: 6 },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 44, w: w / 3 - 4, h: 18, c: '#fce7f3', r: 4 })),
+    { x: 0, y: 66, w, h: 16, c: '#fdf2f8' },
+    { x: 0, y: 86, w, h: 14, c: '#fce7f3' },
+  ],
+  cardgrid: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#f1f5f9' },
+    { x: 0, y: 12, w, h: 16, c: '#e2e8f0', r: 4 },
+    ...Array.from({ length: 6 }, (_, i) => ({ x: (i % 3) * (w / 3 + 2), y: 32 + Math.floor(i / 3) * 22, w: w / 3 - 4, h: 18, c: '#f1f5f9', r: 4 })),
+    { x: 0, y: 80, w, h: 10, c: '#e2e8f0' },
+    { x: 0, y: 94, w, h: 6, c: '#f1f5f9' },
+  ],
+  magazine: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#f1f5f9' },
+    { x: 0, y: 12, w: w * 0.6, h: 28, c: '#e2e8f0', r: 4, label: 'Featured' },
+    { x: w * 0.64, y: 12, w: w * 0.34, h: 12, c: '#f1f5f9', r: 4 },
+    { x: w * 0.64, y: 28, w: w * 0.34, h: 12, c: '#f1f5f9', r: 4 },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 44, w: w / 3 - 4, h: 20, c: '#f8fafc', r: 4 })),
+    { x: 0, y: 68, w, h: 16, c: '#e2e8f0' },
+    { x: 0, y: 88, w, h: 12, c: '#f1f5f9' },
+  ],
+  masonry: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#1e293b' },
+    { x: 0, y: 12, w: w * 0.32, h: 30, c: '#334155', r: 4 },
+    { x: w * 0.34, y: 12, w: w * 0.32, h: 20, c: '#475569', r: 4 },
+    { x: w * 0.68, y: 12, w: w * 0.32, h: 36, c: '#334155', r: 4 },
+    { x: 0, y: 46, w: w * 0.32, h: 22, c: '#475569', r: 4 },
+    { x: w * 0.34, y: 36, w: w * 0.32, h: 32, c: '#334155', r: 4 },
+    { x: 0, y: 72, w, h: 14, c: '#1e293b' },
+    { x: 0, y: 90, w, h: 10, c: '#0f172a' },
+  ],
+  onepage: (w, h) => [
+    { x: 0, y: 0, w, h: 7, c: '#e2e8f0' },
+    { x: 0, y: 10, w, h: 18, c: '#dbeafe', r: 4 },
+    { x: 0, y: 31, w, h: 12, c: '#f1f5f9' },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 46, w: w / 3 - 4, h: 14, c: '#e2e8f0', r: 4 })),
+    { x: 0, y: 64, w, h: 10, c: '#f1f5f9' },
+    { x: 0, y: 78, w, h: 10, c: '#e2e8f0' },
+    { x: 0, y: 92, w, h: 8, c: '#1e293b' },
+  ],
+  storytelling: (w, h) => [
+    { x: 0, y: 0, w, h: 30, c: '#1e293b', label: 'Story Hero' },
+    { x: 0, y: 34, w: w * 0.5, h: 16, c: '#334155', r: 4 },
+    { x: w * 0.54, y: 34, w: w * 0.46, h: 16, c: '#1e293b', r: 4 },
+    { x: 0, y: 54, w, h: 14, c: '#0f172a' },
+    { x: 0, y: 72, w: w * 0.46, h: 12, c: '#334155', r: 4 },
+    { x: w * 0.5, y: 72, w: w * 0.5, h: 12, c: '#1e293b', r: 4 },
+    { x: 0, y: 88, w, h: 12, c: '#0f172a' },
+  ],
+  restaurant: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#fef3c7' },
+    { x: 0, y: 12, w, h: 24, c: '#fde68a', r: 4, label: 'Hero' },
+    { x: 0, y: 40, w, h: 4, c: '#f59e0b' },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 48, w: w / 3 - 4, h: 18, c: '#fef3c7', r: 4 })),
+    { x: 0, y: 70, w, h: 14, c: '#fff7ed' },
+    { x: 0, y: 88, w, h: 12, c: '#fde68a' },
+  ],
+  service: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#f1f5f9' },
+    { x: 0, y: 12, w: w * 0.55, h: 22, c: '#e2e8f0', r: 4 },
+    { x: w * 0.6, y: 12, w: w * 0.38, h: 22, c: '#dbeafe', r: 4 },
+    ...Array.from({ length: 4 }, (_, i) => ({ x: i * (w / 4 + 1), y: 38, w: w / 4 - 3, h: 16, c: '#f1f5f9', r: 4 })),
+    { x: 0, y: 58, w, h: 14, c: '#e2e8f0' },
+    { x: 0, y: 76, w, h: 12, c: '#f8fafc' },
+    { x: 0, y: 92, w, h: 8, c: '#e2e8f0' },
+  ],
+  dashboard: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#1e293b' },
+    { x: w * 0.05, y: 12, w: w * 0.9, h: 30, c: '#111827', r: 6 },
+    { x: w * 0.08, y: 15, w: w * 0.38, h: 10, c: '#1e293b', r: 3 },
+    { x: w * 0.5, y: 15, w: w * 0.38, h: 10, c: '#1e293b', r: 3 },
+    { x: w * 0.08, y: 28, w: w * 0.84, h: 10, c: '#334155', r: 3 },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 46, w: w / 3 - 4, h: 14, c: '#1e293b', r: 4 })),
+    { x: 0, y: 64, w, h: 18, c: '#111827' },
+    { x: 0, y: 86, w, h: 14, c: '#0f172a' },
+  ],
+  futuristic: (w, h) => [
+    { x: 0, y: 0, w, h: 100, c: '#0c0a1d' },
+    { x: 0, y: 0, w, h: 8, c: 'rgba(99,102,241,0.15)' },
+    { x: w * 0.1, y: 14, w: w * 0.8, h: 22, c: 'rgba(99,102,241,0.1)', r: 6 },
+    { x: w * 0.3, y: 20, w: w * 0.4, h: 4, c: '#6366f1', r: 2 },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 40, w: w / 3 - 4, h: 16, c: 'rgba(139,92,246,0.12)', r: 4 })),
+    { x: 0, y: 60, w, h: 18, c: 'rgba(99,102,241,0.08)' },
+    { x: w * 0.2, y: 82, w: w * 0.6, h: 10, c: 'rgba(99,102,241,0.15)', r: 4 },
+    { x: 0, y: 96, w, h: 4, c: 'rgba(99,102,241,0.1)' },
+  ],
+  corporate: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#e2e8f0' },
+    { x: 0, y: 12, w, h: 22, c: '#dbeafe', r: 4 },
+    { x: 0, y: 38, w: w * 0.48, h: 18, c: '#f1f5f9', r: 4 },
+    { x: w * 0.52, y: 38, w: w * 0.48, h: 18, c: '#e2e8f0', r: 4 },
+    ...Array.from({ length: 4 }, (_, i) => ({ x: i * (w / 4 + 1), y: 60, w: w / 4 - 3, h: 12, c: '#f1f5f9', r: 4 })),
+    { x: 0, y: 76, w, h: 12, c: '#e2e8f0' },
+    { x: 0, y: 92, w, h: 8, c: '#1e293b' },
+  ],
+  agency: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#fce7f3' },
+    { x: 0, y: 12, w, h: 24, c: '#f9a8d4', r: 6 },
+    { x: 0, y: 40, w: w * 0.48, h: 20, c: '#fce7f3', r: 4 },
+    { x: w * 0.52, y: 40, w: w * 0.48, h: 20, c: '#fbcfe8', r: 4 },
+    ...Array.from({ length: 3 }, (_, i) => ({ x: i * (w / 3 + 2), y: 64, w: w / 3 - 4, h: 14, c: '#fdf2f8', r: 4 })),
+    { x: 0, y: 82, w, h: 10, c: '#fce7f3' },
+    { x: 0, y: 96, w, h: 4, c: '#f9a8d4' },
+  ],
+  event: (w, h) => [
+    { x: 0, y: 0, w, h: 8, c: '#1f2937' },
+    { x: 0, y: 12, w, h: 26, c: '#ef4444', r: 4, label: 'Event Hero' },
+    { x: w * 0.15, y: 18, w: w * 0.7, h: 8, c: '#991b1b', r: 4 },
+    ...Array.from({ length: 4 }, (_, i) => ({ x: i * (w / 4 + 1), y: 42, w: w / 4 - 3, h: 16, c: '#1f2937', r: 4 })),
+    { x: 0, y: 62, w, h: 14, c: '#111827' },
+    { x: 0, y: 80, w, h: 12, c: '#1f2937' },
+    { x: 0, y: 96, w, h: 4, c: '#0f172a' },
+  ],
+};
+
+export default function TemplateMiniPreview({ layoutPreview = 'minimal', className = '' }) {
+  const vw = 160;
+  const vh = 100;
+  const gen = L[layoutPreview] || L.minimal;
+  const blocks = gen(vw, vh);
+
+  return (
+    <svg viewBox={`0 0 ${vw} ${vh}`} className={className} style={{ width: '100%', display: 'block' }} xmlns="http://www.w3.org/2000/svg">
+      {blocks.map((b, i) => (
+        <rect key={i} x={b.x} y={b.y} width={b.w} height={b.h} rx={b.r || 0} fill={b.c} />
+      ))}
+    </svg>
+  );
+}

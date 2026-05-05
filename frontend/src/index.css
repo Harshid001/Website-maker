@@ -108,6 +108,49 @@
   animation: builderGlow 1.8s ease-in-out infinite;
 }
 
+[data-node-id] {
+  transition-property: background-color, border-color, box-shadow, color, opacity, transform;
+  transition-duration: 160ms;
+}
+
+[data-node-id]:hover {
+  background-color: var(--hover-background-color);
+  color: var(--hover-color);
+  border-color: var(--hover-border-color);
+  box-shadow: var(--hover-box-shadow);
+  transform: var(--hover-transform);
+}
+
+.drop-zone-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.drop-zone-valid {
+  background: rgba(34, 197, 94, 0.16);
+  border: 2px solid #22c55e;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.35);
+}
+
+.drop-zone-invalid {
+  background: rgba(239, 68, 68, 0.12);
+  border: 2px dashed #ef4444;
+}
+
+.drop-zone-warning {
+  background: rgba(234, 179, 8, 0.14);
+  border: 2px dashed #eab308;
+  box-shadow: 0 0 18px rgba(234, 179, 8, 0.28);
+}
+
+.drop-zone-active {
+  background: rgba(34, 197, 94, 0.25);
+  border: 3px solid #22c55e;
+  box-shadow: 0 0 28px rgba(34, 197, 94, 0.55);
+}
+
 @keyframes builderFade {
   from { opacity: 0; }
   to { opacity: 1; }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useBuilderStore } from '../../store/builderStore';
 import { getDeviceWidth } from '../../utils/renderHelpers';
@@ -12,6 +12,7 @@ export default function CanvasFrame({ children, showPrototypeOverlay = true }) {
   const panRef = useRef(null);
   const [availableSize, setAvailableSize] = useState({ width: 1600, height: 900 });
   const [frameHeight, setFrameHeight] = useState(900);
+  const [isPanning, setIsPanning] = useState(false);
   const width = getDeviceWidth(activeDevice);
   const scale = zoom / 100;
   const scaledWidth = Math.ceil(width * scale);
@@ -67,6 +68,7 @@ export default function CanvasFrame({ children, showPrototypeOverlay = true }) {
       left: outerRef.current?.scrollLeft || 0,
       top: outerRef.current?.scrollTop || 0,
     };
+    setIsPanning(true);
     outerRef.current?.setPointerCapture?.(event.pointerId);
   };
 
@@ -80,6 +82,7 @@ export default function CanvasFrame({ children, showPrototypeOverlay = true }) {
   const endPan = (event) => {
     if (!panRef.current) return;
     panRef.current = null;
+    setIsPanning(false);
     outerRef.current?.releasePointerCapture?.(event.pointerId);
   };
 
@@ -91,16 +94,16 @@ export default function CanvasFrame({ children, showPrototypeOverlay = true }) {
       onPointerMove={updatePan}
       onPointerUp={endPan}
       onPointerCancel={endPan}
-      className={`h-full w-full overflow-auto p-4 lg:p-8 custom-scrollbar ${activeTool === 'hand' ? 'cursor-grab active:cursor-grabbing' : ''}`}
+      className={`h-full w-full overflow-auto p-4 lg:p-8 custom-scrollbar ${activeTool === 'hand' ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'}`}
     >
-      <div className="min-h-full transition-[width] duration-300" style={{ minWidth: Math.max(scaledWidth + 220, availableSize.width - 32) }}>
-        <div className="mx-auto mb-3 flex w-fit items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/95 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 shadow-xl">
-          <span className="text-white">{currentPage?.name || 'Home'} Page</span>
-          <span className="text-indigo-300">{activeDevice}</span>
-          <span>{width}px canvas</span>
-          <span>{Math.round(zoom)}%</span>
-        </div>
-        <div className="mx-auto transition-[width,height] duration-300" style={{ width: scaledWidth, minHeight: scaledHeight }}>
+      <div className="min-h-full flex flex-col transition-[width] duration-300" style={{ minWidth: Math.max(scaledWidth + 220, availableSize.width - 32) }}>
+        <div className="m-auto transition-[width,height] duration-300" style={{ width: scaledWidth, minHeight: scaledHeight }}>
+          <div className="mx-auto mb-3 flex w-fit items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/95 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 shadow-xl">
+            <span className="text-white">{currentPage?.name || 'Home'} Page</span>
+            <span className="text-indigo-300">{activeDevice}</span>
+            <span>{width}px canvas</span>
+            <span>{Math.round(zoom)}%</span>
+          </div>
         <div className="transition-transform duration-200" style={{ width, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
         <div ref={frameRef} className="rounded-2xl border border-slate-700/70 bg-white shadow-2xl shadow-black/40 overflow-hidden">
           <div className="h-10 bg-slate-100 border-b border-slate-200 flex items-center px-4 gap-3">

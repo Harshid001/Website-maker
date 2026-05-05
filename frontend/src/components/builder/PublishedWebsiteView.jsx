@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useBuilderStore } from '../../store/builderStore';
 import CleanRenderer from './CleanRenderer';
 
-export default function PublishedWebsiteView({ device = 'desktop' }) {
+export default function PublishedWebsiteView({ device = 'desktop', onNavigate }) {
   const { project, currentPage, nodesMap, setActiveDevice } = useBuilderStore();
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function PublishedWebsiteView({ device = 'desktop' }) {
       }}
     >
       {rootNodeIds.map((nodeId) => (
-        <CleanRenderer key={nodeId} nodeId={nodeId} nodesMap={nodesMap} device={device} />
+        <CleanRenderer key={nodeId} nodeId={nodeId} nodesMap={nodesMap} device={device} onLinkClick={onNavigate} project={project} />
       ))}
     </div>
   );

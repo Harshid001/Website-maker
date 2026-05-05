@@ -1,157 +1,156 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Eye, Film, Globe2, Palette, Search, Wand2 } from 'lucide-react';
-import { websiteTemplates } from '../data/websiteTemplates';
-import { designTemplates } from '../data/designTemplates';
-import { animationTemplates } from '../data/animationTemplates';
-import { modelTemplates } from '../data/modelTemplates';
+import TemplateFilters from '../components/templates/TemplateFilters';
+import TemplateGrid from '../components/templates/TemplateGrid';
+import TemplatePreviewModal from '../components/templates/TemplatePreviewModal';
+import TemplateSearch from '../components/templates/TemplateSearch';
+import TemplateTabs from '../components/templates/TemplateTabs';
+import { templates, templateCounts } from '../data/templates';
+import { createProjectFromTemplate } from '../utils/projectStorage';
 import { projectStorage } from '../services/projectStorage';
-import { aiMockService } from '../services/aiMockService';
-import { rekeyTree } from '../utils/ids';
-import { slugify } from '../utils/slugify';
+import {
+  filterTemplates,
+  getTemplateCategories,
+  getTemplateTags,
+  getWorkspaceRoute,
+  getTypeLabel,
+} from '../utils/templateUtils';
 
-const tabs = [
-  { id: 'website', label: 'Websites', icon: Globe2, route: '/create/website' },
-  { id: 'design2d', label: '2D Designs', icon: Palette, route: '/builder/design-2d' },
-  { id: 'animation', label: 'Animations', icon: Film, route: '/builder/animation' },
-  { id: 'model3d', label: '3D Models', icon: Box, route: '/builder/model-3d' },
-];
+const FAVORITES_KEY = 'shopcraft-template-favorites';
 
-const templateSets = {
-  website: websiteTemplates,
-  design2d: designTemplates,
-  animation: animationTemplates,
-  model3d: modelTemplates,
+const readFavorites = () => {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    return JSON.parse(window.localStorage.getItem(FAVORITES_KEY) || '[]');
+  } catch {
+    return [];
+  }
 };
 
 export default function Templates() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('website');
+  const [activeType, setActiveType] = useState('website');
   const [query, setQuery] = useState('');
-  const [notice, setNotice] = useState('');
+  const [category, setCategory] = useState('');
+  const [tag, setTag] = useState('');
+  const [sortBy, setSortBy] = useState('popular');
+  const [previewTemplate, setPreviewTemplate] = useState(null);
+  const [favorites, setFavorites] = useState(readFavorites);
 
-  const filteredTemplates = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    return (templateSets[activeTab] || []).filter((template) => {
-      if (!term) return true;
-      return [template.name, template.category, template.description].filter(Boolean).some((value) => String(value).toLowerCase().includes(term));
-    });
-  }, [activeTab, query]);
+  const categories = useMemo(() => getTemplateCategories(templates, activeType), [activeType]);
+  const tags = useMemo(() => getTemplateTags(templates, activeType), [activeType]);
 
-  const createWebsiteProject = (template, mode = 'edit') => {
-    const pages = rekeyTree(template.pages);
-    const homePage = pages.find((page) => page.isHome) || pages[0];
-    const project = projectStorage.createProject({
-      name: `${template.name} Website`,
-      slug: slugify(template.name),
-      type: 'website',
-      category: template.category,
-      businessDetails: {
-        websiteName: `${template.name} Website`,
-        businessCategory: template.category,
-        brandStyle: template.name,
-      },
-      theme: template.theme,
-      pages,
-      currentPageId: homePage?.id,
-      sections: homePage?.sections || [],
-      seo: aiMockService.generateSEO({ name: template.name, category: template.category }),
-      settings: { templateId: template.id, templateName: template.name },
-    });
-    navigate(mode === 'preview' ? `/preview/${project.id}` : `/builder/website/${project.id}`);
+  const visibleTemplates = useMemo(
+    () =>
+      filterTemplates(templates, {
+        type: activeType,
+        query,
+        category,
+        tag,
+        sortBy,
+      }),
+    [activeType, category, query, sortBy, tag]
+  );
+
+  const handleTabChange = (type) => {
+    setActiveType(type);
+    setCategory('');
+    setTag('');
+    setPreviewTemplate(null);
+  };
+
+  const handleFavorite = (template) => {
+    const nextFavorites = favorites.includes(template.id)
+      ? favorites.filter((id) => id !== template.id)
+      : [...favorites, template.id];
+
+    setFavorites(nextFavorites);
+    window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(nextFavorites));
   };
 
   const handleUseTemplate = (template) => {
-    if (activeTab === 'website') {
-      createWebsiteProject(template, 'edit');
-      return;
+    let project;
+    if (template.workspaceType === 'website-builder') {
+      project = projectStorage.createProjectFromTemplate(template);
+    } else {
+      project = createProjectFromTemplate(template);
     }
-
-    const route = tabs.find((tab) => tab.id === activeTab)?.route || '/dashboard';
-    window.localStorage.setItem('shopcraft_last_template_action', JSON.stringify({ type: activeTab, template }));
-    setNotice(`${template.name} is saved as the selected ${activeTab} starter. Opening the matching studio.`);
-    navigate(route);
+    navigate(getWorkspaceRoute(project));
   };
 
-  const handlePreviewTemplate = (template) => {
-    if (activeTab === 'website') {
-      createWebsiteProject(template, 'preview');
-      return;
-    }
-    setNotice(`${template.name} preview is ready as a structured placeholder for this studio.`);
-  };
+  const isWebsiteTab = activeType === 'website';
 
   return (
-    <div className="mx-auto max-w-7xl p-8">
-      <header className="mb-12">
-        <h1 className="mb-4 text-4xl font-bold text-white">Template Library</h1>
-        <p className="text-gray-400">Choose a professional starter and open it in the right workspace.</p>
-      </header>
+    <div className="min-h-full bg-[#050816] px-4 py-8 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <header className="mb-8 rounded-3xl border border-slate-800 bg-slate-950/70 p-6 shadow-2xl shadow-black/20 md:p-8">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+            <div className="max-w-3xl">
+              <span className="inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-sm font-semibold text-cyan-200">
+                Design layouts first, professions as filters
+              </span>
+              <h1 className="mt-5 text-4xl font-black text-white md:text-5xl">Template Library</h1>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400">
+                Choose by layout and visual direction: minimal, luxury, SaaS, editorial, booking, storefront, dashboard, and more. Professions stay available as use-case filters.
+              </p>
+            </div>
 
-      <div className="mb-8 flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
-        <div className="flex rounded-xl border border-gray-700 bg-gray-800 p-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => { setActiveTab(tab.id); setNotice(''); }}
-                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
-                  activeTab === tab.id ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <Icon size={16} />
-                {tab.label}
-              </button>
-            );
-          })}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:min-w-[520px]">
+              {Object.entries(templateCounts).map(([type, count]) => (
+                <div key={type} className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+                  <p className="text-2xl font-black text-white">{count}</p>
+                  <p className="mt-1 text-sm text-slate-400">{getTypeLabel(type)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </header>
+
+        <div className="sticky top-0 z-30 mb-7 space-y-4 border-b border-slate-900 bg-[#050816]/95 pb-5 pt-1 backdrop-blur-xl">
+          <TemplateTabs activeType={activeType} counts={templateCounts} onChange={handleTabChange} />
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_1.35fr]">
+            <TemplateSearch value={query} onChange={setQuery} />
+            <TemplateFilters
+              categories={categories}
+              tags={tags}
+              category={category}
+              tag={tag}
+              sortBy={sortBy}
+              categoryLabel={isWebsiteTab ? 'All design types' : 'All categories'}
+              tagLabel={isWebsiteTab ? 'All suitable professions' : 'All tags'}
+              onCategoryChange={setCategory}
+              onTagChange={setTag}
+              onSortChange={setSortBy}
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
+            <span>
+              Showing <strong className="text-white">{visibleTemplates.length}</strong>{' '}
+              {isWebsiteTab ? 'website design layouts' : `${getTypeLabel(activeType).toLowerCase()} templates`}
+            </span>
+            <span>
+              {isWebsiteTab
+                ? 'Search covers design name, design type, suitable professions, tags, sections, and description.'
+                : 'Search covers title, category, tags, description, and type.'}
+            </span>
+          </div>
         </div>
 
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search templates..."
-            className="w-full rounded-xl border border-gray-700 bg-gray-800 py-2 pl-10 pr-4 text-white outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
+        <TemplateGrid
+          templates={visibleTemplates}
+          favorites={favorites}
+          onFavorite={handleFavorite}
+          onPreview={setPreviewTemplate}
+          onUse={handleUseTemplate}
+        />
       </div>
 
-      {notice && (
-        <div className="mb-6 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 px-5 py-4 text-sm font-bold text-indigo-100">
-          {notice}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {filteredTemplates.map((template) => (
-          <article key={template.id} className="group overflow-hidden rounded-2xl border border-gray-700 bg-gray-800 transition-all hover:border-primary">
-            <div className="relative aspect-video overflow-hidden bg-gray-900">
-              <img src={template.thumbnail} alt={template.name} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-              <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                <button type="button" onClick={() => handleUseTemplate(template)} className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-xs font-black uppercase tracking-widest text-white">
-                  <Wand2 size={15} />
-                  Use
-                </button>
-                <button type="button" onClick={() => handlePreviewTemplate(template)} className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-white backdrop-blur-md hover:bg-white/20">
-                  <Eye size={15} />
-                  Preview
-                </button>
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="flex items-center justify-between gap-3">
-                <h4 className="font-bold text-white">{template.name}</h4>
-                <span className="rounded bg-gray-900 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">{template.category}</span>
-              </div>
-              {template.description && <p className="mt-2 line-clamp-2 text-sm text-gray-400">{template.description}</p>}
-            </div>
-          </article>
-        ))}
-      </div>
+      <TemplatePreviewModal
+        template={previewTemplate}
+        onClose={() => setPreviewTemplate(null)}
+        onUse={handleUseTemplate}
+      />
     </div>
   );
 }

@@ -24,15 +24,16 @@ export default function AnimationProperties() {
     
     // Apply temporary animation
     const keyframes = {
-      'fade-in': 'fadeIn',
-      'slide-up': 'slideUp',
-      'slide-left': 'slideLeft',
-      'slide-right': 'slideRight',
-      'zoom-in': 'zoomIn',
-      'bounce': 'bounce',
+      'fade-in': 'builderFade',
+      'slide-up': 'builderSlideUp',
+      'slide-left': 'builderSlideLeft',
+      'slide-right': 'builderSlideRight',
+      'zoom-in': 'builderZoom',
+      'bounce': 'builderBounce',
+      'button-glow': 'builderGlow',
     };
     
-    const kf = keyframes[type] || 'fadeIn';
+    const kf = keyframes[type] || 'builderFade';
     el.style.animation = `${kf} ${duration}ms ${animation.easing || 'ease-out'} forwards`;
     
     // Clean up after animation

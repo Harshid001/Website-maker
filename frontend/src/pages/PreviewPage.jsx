@@ -30,15 +30,37 @@ function PreviewInner() {
           <ArrowLeft size={17} />
           Back to editor
         </Link>
-        <DeviceSwitcher />
-        <button type="button" onClick={handlePublish} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-indigo-500">
-          <Rocket size={15} />
-          Publish
-        </button>
+        <div className="flex items-center gap-4">
+          <DeviceSwitcher />
+          <button type="button" onClick={handlePublish} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-indigo-500">
+            <Rocket size={15} />
+            Publish
+          </button>
+        </div>
       </header>
+
+      {(project?.pages?.length > 1) && (
+        <div className="flex justify-center border-b border-slate-800 bg-slate-950 p-2">
+          <div className="flex items-center gap-1 rounded-xl bg-slate-900 p-1">
+            {project.pages.map((page) => (
+              <button
+                key={page.id}
+                type="button"
+                onClick={() => navigate(`/preview/${project.id}/${page.slug}`)}
+                className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-colors ${
+                  project.currentPageId === page.id ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                {page.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <main className="min-h-0 flex-1 overflow-auto bg-slate-200 p-6">
         <div className="mx-auto min-h-full bg-white shadow-2xl transition-[width] duration-300" style={{ width, maxWidth: 'calc(100vw - 48px)' }}>
-          <PublishedWebsiteView device={activeDevice} />
+          <PublishedWebsiteView device={activeDevice} onNavigate={(slug) => navigate(`/preview/${project.id}/${slug}`)} />
         </div>
       </main>
     </div>

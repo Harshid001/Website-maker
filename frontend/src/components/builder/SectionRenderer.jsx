@@ -1,4 +1,3 @@
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CSS } from '@dnd-kit/utilities';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -26,6 +25,7 @@ export default function SectionRenderer({ section, index, readonly = false, devi
   const {
     currentPage,
     builderMode,
+    activeTool,
     selectedSectionId,
     selectedNodeIds,
     selectSection,
@@ -35,10 +35,17 @@ export default function SectionRenderer({ section, index, readonly = false, devi
     openContextMenu,
     showToast,
   } = useBuilderStore();
-  const sortable = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: section.id,
     data: { dragType: 'section', sectionId: section.id },
-    disabled: readonly || section.locked,
+    disabled: readonly || section.locked || activeTool !== 'hand',
   });
   const selected = selectedSectionId === section.id || selectedNodeIds.includes(section.id);
   const hidden = section.hidden || responsiveHidden(section, device);
@@ -52,8 +59,8 @@ export default function SectionRenderer({ section, index, readonly = false, devi
     ...responsiveStylesFor(section, device),
     position: 'relative',
     opacity: section.styles?.opacity,
-    transform: CSS.Transform.toString(sortable.transform),
-    transition: sortable.transition,
+    transform: CSS.Transform.toString(transform),
+    transition,
   };
 
   const handleSectionClick = (event) => {
@@ -169,11 +176,11 @@ export default function SectionRenderer({ section, index, readonly = false, devi
 
   return (
     <section
-      ref={sortable.setNodeRef}
+      ref={setNodeRef}
       style={wrapperStyle}
       onClick={handleSectionClick}
       onContextMenu={handleContextMenu}
-      className={`relative ${sortable.isDragging ? 'z-30 opacity-50' : ''} ${!readonly ? 'cursor-pointer hover:outline hover:outline-1 hover:outline-indigo-300/70' : ''} ${selected && !readonly ? 'outline outline-2 outline-indigo-500' : ''}`}
+      className={`relative ${isDragging ? 'z-30 opacity-50' : ''} ${!readonly ? 'cursor-pointer hover:outline hover:outline-1 hover:outline-indigo-300/70' : ''} ${selected && !readonly ? 'outline outline-2 outline-indigo-500' : ''}`}
       data-builder-section={section.id}
       data-node-id={section.id}
       data-section-id={section.id}
@@ -186,8 +193,8 @@ export default function SectionRenderer({ section, index, readonly = false, devi
           item={section}
           kind="Section"
           sectionId={section.id}
-          dragAttributes={sortable.attributes}
-          dragListeners={sortable.listeners}
+          dragAttributes={attributes}
+          dragListeners={listeners}
         />
       )}
       {!readonly && selected && (

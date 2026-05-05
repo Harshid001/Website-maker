@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useBuilderStore } from '../../store/builderStore';
 import { LAYOUT_MODES } from '../../data/nodeSchema';
 
@@ -69,6 +69,13 @@ export default function ResizeHandles({ nodeId, minWidth = 20, minHeight = 20 })
       setLiveSize({ w: finalWidth, h: finalHeight });
       
       resizeNodeInMap(nodeId, { width: finalWidth, height: finalHeight });
+      window.dispatchEvent(new CustomEvent('shopcraft:placement-resize', {
+        detail: {
+          nodeId,
+          clientPoint: { x: moveEvent.clientX, y: moveEvent.clientY },
+          clientSize: { width: finalWidth, height: finalHeight },
+        },
+      }));
       if (isFree) {
         dragNodeInMap(nodeId, { x: finalNodeX, y: finalNodeY });
       }
@@ -92,6 +99,7 @@ export default function ResizeHandles({ nodeId, minWidth = 20, minHeight = 20 })
         <span
           key={handle.id}
           role="presentation"
+          data-resize-handle
           onPointerDown={(event) => startResize(event, handle.id)}
           className={`absolute z-30 h-3 w-3 rounded-full border border-white bg-indigo-500 shadow-lg ${handle.className}`}
         />

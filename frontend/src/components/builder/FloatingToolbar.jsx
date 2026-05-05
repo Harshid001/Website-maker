@@ -1,23 +1,16 @@
-import React from 'react';
 import {
   AlignCenter,
-  AlignLeft,
-  AlignRight,
   Bold,
   Copy,
-  Crop,
   Eye,
   EyeOff,
   GripVertical,
-  ImagePlus,
-  Link,
   Lock,
   Maximize2,
   MoreHorizontal,
   Paintbrush,
   Trash2,
   Unlock,
-  Wand2,
   ArrowUpToLine,
   ArrowDownToLine,
 } from 'lucide-react';
@@ -64,6 +57,7 @@ export default function FloatingToolbar({ nodeId }) {
 
   return (
     <div
+      data-builder-toolbar
       className="absolute left-1/2 top-0 z-40 flex -translate-x-1/2 -translate-y-[calc(100%+8px)] items-center gap-1 rounded-xl border border-slate-700 bg-slate-950/95 p-1 text-white shadow-2xl backdrop-blur"
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}

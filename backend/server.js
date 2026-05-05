@@ -23,16 +23,22 @@ app.get('/', (req, res) => {
   res.send('ShopCraft Studio API is running...');
 });
 
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'shopcraft-node-api' });
+});
+
 // Import Routes
 const authRoutes = require('./routes/authRoutes');
 const projectRoutes = require('./routes/projectRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const safeTemplateRoutes = require('./routes/safeTemplateRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/templates', safeTemplateRoutes);
 
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 app.use(notFound);

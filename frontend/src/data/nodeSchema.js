@@ -231,6 +231,7 @@ export const createNode = (type, overrides = {}) => {
     },
     responsive: {
       desktop: {},
+      laptop: {},
       tablet: {},
       mobile: {},
       ...(overrides.responsive || {}),

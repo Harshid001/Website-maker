@@ -38,19 +38,21 @@ const advanced = [
 const sectionInsertTypes = ['navbar', 'footer', 'hero', 'services', 'pricing', 'testimonials', 'faq'];
 
 const dragPayload = (dragType, value) => (event) => {
-  event.dataTransfer.setData('application/shopcraft-builder', JSON.stringify(dragType === 'new-section' ? { dragType, sectionType: value } : { dragType, elementType: value }));
+  const payload = dragType === 'new-section' ? { dragType, sectionType: value } : { dragType, elementType: value };
+  if (typeof window !== 'undefined') window.__shopcraftBuilderDragPayload = payload;
+  event.dataTransfer.setData('application/shopcraft-builder', JSON.stringify(payload));
   event.dataTransfer.effectAllowed = 'copy';
 };
 
 export default function AddElementsPanel() {
-  const { addElement, addSection } = useBuilderStore();
+  const { startSmartInsert } = useBuilderStore();
 
   return (
     <PanelShell eyebrow="Insert" title="Add Elements">
       <PanelSection title="Basic elements">
         <div className="grid grid-cols-2 gap-2">
           {basic.map(([type, label, Icon]) => (
-            <button key={label} type="button" draggable onDragStart={dragPayload('new-element', type)} onClick={() => addElement(type)} className="rounded-2xl border border-slate-800 bg-slate-950 p-3 text-left hover:border-indigo-500/60 hover:bg-indigo-500/10">
+            <button key={label} type="button" draggable onDragStart={dragPayload('new-element', type)} onClick={() => startSmartInsert({ dragType: 'new-element', elementType: type })} className="rounded-2xl border border-slate-800 bg-slate-950 p-3 text-left hover:border-indigo-500/60 hover:bg-indigo-500/10">
               <Icon size={17} className="mb-3 text-indigo-300" />
               <span className="text-[10px] font-black uppercase tracking-widest text-white">{label}</span>
             </button>
@@ -65,10 +67,12 @@ export default function AddElementsPanel() {
             label={label}
             description="Click to add, or drag into the canvas."
             onDragStart={dragPayload(sectionInsertTypes.includes(type) ? 'new-section' : 'new-element', type)}
-            onClick={() => (sectionInsertTypes.includes(type) ? addSection(type) : addElement(type))}
+            onClick={() => startSmartInsert(sectionInsertTypes.includes(type)
+              ? { dragType: 'new-section', sectionType: type }
+              : { dragType: 'new-element', elementType: type })}
           />
         ))}
-        <ActionButton icon={LinkIcon} label="HTML Embed" onClick={() => addElement('customHtml')} />
+        <ActionButton icon={LinkIcon} label="HTML Embed" onClick={() => startSmartInsert({ dragType: 'new-element', elementType: 'customHtml' })} />
       </PanelSection>
     </PanelShell>
   );

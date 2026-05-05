@@ -1,14 +1,14 @@
-import React from 'react';
 import { useBuilderStore } from '../../../store/builderStore';
-import { ColorInput, MiniButton, PropertyGroup, SelectInput, TextInput } from './PropertyControls';
+import { responsiveStylesFor } from '../../../utils/renderHelpers';
+import { ColorInput, MiniButton, PropertyGroup, SelectInput, SliderControl, TextInput } from './PropertyControls';
 
 export default function DesignProperties() {
-  const { getSelectedNode, updateNodeStylesInMap, showToast } = useBuilderStore();
+  const { activeDevice, getSelectedNode, updateNodeStylesInMap } = useBuilderStore();
   const node = getSelectedNode;
   
   if (!node) return null;
 
-  const styles = node.styles || {};
+  const styles = { ...(node.styles || {}), ...responsiveStylesFor(node, activeDevice) };
   const update = (key) => (value) => updateNodeStylesInMap(node.id, { [key]: value });
 
   return (
@@ -40,10 +40,10 @@ export default function DesignProperties() {
         <TextInput label="Border width" value={styles.borderWidth || ''} onChange={update('borderWidth')} placeholder="1px" />
         <SelectInput label="Border style" value={styles.borderStyle || 'solid'} onChange={update('borderStyle')} options={['solid', 'dashed', 'dotted', 'double', 'none']} />
         <TextInput label="Radius" value={styles.borderRadius || ''} onChange={update('borderRadius')} placeholder="16px" />
-        <TextInput label="Opacity" value={styles.opacity || ''} onChange={update('opacity')} placeholder="1" />
         <TextInput label="Blur" value={styles.filter || ''} onChange={update('filter')} placeholder="blur(0px)" />
         <TextInput label="Hover transform" value={styles['--hover-transform'] || ''} onChange={update('--hover-transform')} placeholder="translateY(-4px)" />
       </div>
+      <SliderControl label="Opacity" value={Number(styles.opacity ?? 1) * 100} min={0} max={100} step={1} onChange={(value) => updateNodeStylesInMap(node.id, { opacity: String(value / 100) })} />
 
       {/* Shadow */}
       <SelectInput
@@ -68,7 +68,10 @@ export default function DesignProperties() {
           <MiniButton onClick={() => updateNodeStylesInMap(node.id, { backdropFilter: 'blur(18px)', backgroundColor: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.18)' })}>Glassmorphism</MiniButton>
           <MiniButton onClick={() => updateNodeStylesInMap(node.id, { boxShadow: '0 18px 45px rgba(15, 23, 42, 0.14)' })}>Apply shadow</MiniButton>
           <MiniButton onClick={() => updateNodeStylesInMap(node.id, { backdropFilter: 'blur(4px)', backgroundColor: 'rgba(0,0,0,0.4)' })}>Dark overlay</MiniButton>
-          <MiniButton onClick={() => showToast('Pattern backgrounds are structured placeholders. Upload a pattern image via Background Properties.')}>Pattern</MiniButton>
+          <MiniButton onClick={() => updateNodeStylesInMap(node.id, {
+            backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(99,102,241,.28) 1px, transparent 0)',
+            backgroundSize: '18px 18px',
+          })}>Pattern</MiniButton>
         </div>
       </div>
 

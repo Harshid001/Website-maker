@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock3, Eye, FileCode2, History, Maximize2, Minimize2, Monitor, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Redo2, Rocket, Save, Smartphone, Tablet, Undo2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Clock3, Eye, FileCode2, FileText, History, Home, Map, Maximize2, Minimize2, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Rocket, Save } from 'lucide-react';
 import { useBuilderStore } from '../../store/builderStore';
 import PrototypeModeToggle from './prototype/PrototypeModeToggle';
 import ToolBar from './ToolBar';
@@ -23,22 +23,19 @@ export default function BuilderTopBar() {
     project,
     currentPage,
     nodesMap,
-    history,
-    future,
     isSaving,
     lastSavedAt,
     setProject,
     commitNodesMap,
     saveProject,
     publishProject,
-    undo,
-    redo,
+    switchPage,
     showToast,
-    activeDevice,
-    setActiveDevice,
     leftPanelCollapsed,
     rightPanelCollapsed,
     fullscreenCanvas,
+    canvasView,
+    setCanvasView,
     setLeftPanelCollapsed,
     setRightPanelCollapsed,
     setFullscreenCanvas,
@@ -108,6 +105,23 @@ export default function BuilderTopBar() {
     settings: () => showToast('Open the Settings tool in the left panel to edit project settings.'),
   };
 
+  const [pageDropdownOpen, setPageDropdownOpen] = useState(false);
+  const pageDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (pageDropdownRef.current && !pageDropdownRef.current.contains(event.target)) setPageDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSwitchPage = (pageId) => {
+    switchPage(pageId);
+    setPageDropdownOpen(false);
+    if (project?.id) navigate(`/builder/website/${project.id}/page/${pageId}`, { replace: true });
+  };
+
   return (
     <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 lg:px-6 shrink-0 z-50">
       <div className="flex items-center gap-4 min-w-0">
@@ -121,37 +135,60 @@ export default function BuilderTopBar() {
             <Clock3 size={11} />
             <span>{isSaving ? 'Saving...' : `Saved ${formatTime(lastSavedAt)}`}</span>
           </div>
-          <h1 className="truncate text-sm font-black uppercase tracking-widest text-white">{project?.name || 'Website Builder'} <span className="text-slate-500">/ {currentPage?.name || 'Home'}</span></h1>
+          <div className="flex items-center gap-1">
+            <h1 className="truncate text-sm font-black uppercase tracking-widest text-white">{project?.name || 'Website Builder'}</h1>
+            <span className="text-sm text-slate-600">/</span>
+            <div className="relative" ref={pageDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setPageDropdownOpen((o) => !o)}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-black uppercase tracking-widest text-slate-400 transition hover:bg-slate-800 hover:text-white"
+              >
+                <FileText size={12} />
+                <span className="max-w-[120px] truncate">{currentPage?.name || 'Home'}</span>
+                <ChevronDown size={12} />
+              </button>
+              {pageDropdownOpen && (
+                <div className="absolute left-0 top-9 z-[100] w-64 rounded-2xl border border-slate-800 bg-slate-950 p-2 shadow-2xl">
+                  <p className="px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.25em] text-slate-600">Switch Page</p>
+                  {(project?.pages || []).map((page) => (
+                    <button
+                      key={page.id}
+                      type="button"
+                      onClick={() => handleSwitchPage(page.id)}
+                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-bold transition ${
+                        currentPage?.id === page.id
+                          ? 'bg-indigo-600/20 text-indigo-200'
+                          : 'text-slate-300 hover:bg-slate-900 hover:text-white'
+                      }`}
+                    >
+                      {page.isHome ? <Home size={13} className="shrink-0 text-indigo-400" /> : <FileText size={13} className="shrink-0 text-slate-500" />}
+                      <span className="flex-1 truncate">{page.name}</span>
+                      <span className="text-[9px] font-bold text-slate-600">/{page.slug}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="flex items-center gap-2 overflow-x-auto px-2 custom-scrollbar">
+        <button
+          type="button"
+          onClick={() => setCanvasView(canvasView === 'design' ? 'routing' : 'design')}
+          title={canvasView === 'design' ? 'View routing map' : 'View design'}
+          className={`h-9 flex items-center gap-2 rounded-xl px-3 text-xs font-black uppercase tracking-widest transition-colors ${
+            canvasView === 'routing' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Map size={14} />
+          <span className="hidden sm:inline">Map</span>
+        </button>
+        <div className="h-7 w-px bg-slate-800" />
         <PrototypeModeToggle />
         <ToolBar />
-        <div className="h-7 w-px bg-slate-800" />
-        <button type="button" title="Undo" aria-label="Undo" onClick={undo} disabled={!history.length} className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30">
-          <Undo2 size={16} />
-        </button>
-        <button type="button" title="Redo" aria-label="Redo" onClick={redo} disabled={!future.length} className="h-9 w-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30">
-          <Redo2 size={16} />
-        </button>
-        <div className="h-7 w-px bg-slate-800" />
-        {[
-          ['desktop', Monitor],
-          ['tablet', Tablet],
-          ['mobile', Smartphone],
-        ].map(([device, Icon]) => (
-          <button
-            key={device}
-            type="button"
-            title={`${device} preview`}
-            aria-label={`${device} preview`}
-            onClick={() => setActiveDevice(device)}
-            className={`h-9 w-9 rounded-xl flex items-center justify-center ${activeDevice === device ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-          >
-            <Icon size={16} />
-          </button>
-        ))}
         <div className="h-7 w-px bg-slate-800" />
         <button
           type="button"
