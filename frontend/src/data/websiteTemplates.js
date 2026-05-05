@@ -42,6 +42,16 @@ export const websiteTemplates = [
   template('healthcare-clinic', 'Healthcare Clinic', 'healthcare', 'clean-white', ['hero', 'services', 'about', 'testimonials', 'faq', 'contact', 'footer'], 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=900&auto=format&fit=crop'),
   template('real-estate', 'Real Estate', 'real-estate', 'minimal-portfolio', ['hero', 'services', 'gallery', 'testimonials', 'contact', 'footer'], 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=900&auto=format&fit=crop'),
   template('event-landing', 'Event Landing', 'event', 'creative-studio', ['hero', 'about', 'services', 'pricing', 'faq', 'contact', 'footer'], 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=900&auto=format&fit=crop'),
+  template('salon-beauty', 'Salon & Beauty', 'salon', 'clean-white', ['hero', 'services', 'gallery', 'pricing', 'testimonials', 'booking', 'contact', 'footer'], 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=900&auto=format&fit=crop'),
+  template('cafe-bistro', 'Cafe & Bistro', 'cafe', 'restaurant-warm', ['hero', 'about', 'restaurantMenu', 'gallery', 'testimonials', 'contact', 'footer'], 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=900&auto=format&fit=crop'),
+  template('freelancer-resume', 'Freelancer Resume', 'freelancer', 'minimal-portfolio', ['hero', 'about', 'services', 'portfolio', 'testimonials', 'contact', 'footer'], 'https://images.unsplash.com/photo-1522199755839-a2bacb67c546?w=900&auto=format&fit=crop'),
+  template('saas-startup', 'SaaS Startup', 'saas', 'startup-gradient', ['hero', 'services', 'pricing', 'testimonials', 'faq', 'newsletter', 'footer'], 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=900&auto=format&fit=crop'),
+  template('nonprofit-charity', 'Nonprofit & Charity', 'nonprofit', 'clean-white', ['hero', 'about', 'services', 'team', 'testimonials', 'contact', 'newsletter', 'footer'], 'https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=900&auto=format&fit=crop'),
+  template('travel-agency', 'Travel Agency', 'travel', 'creative-studio', ['hero', 'services', 'gallery', 'testimonials', 'booking', 'faq', 'contact', 'footer'], 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=900&auto=format&fit=crop'),
+  template('law-firm', 'Law Firm', 'legal', 'luxury-black', ['hero', 'about', 'services', 'team', 'testimonials', 'faq', 'contact', 'footer'], 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=900&auto=format&fit=crop'),
+  template('music-band', 'Music & Band', 'music', 'fitness-bold', ['hero', 'about', 'gallery', 'blog', 'newsletter', 'contact', 'footer'], 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=900&auto=format&fit=crop'),
+  template('pet-services', 'Pet Services', 'pets', 'clean-white', ['hero', 'services', 'gallery', 'pricing', 'testimonials', 'booking', 'contact', 'footer'], 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=900&auto=format&fit=crop'),
+  template('construction-builder', 'Construction & Builder', 'construction', 'fitness-bold', ['hero', 'about', 'services', 'portfolio', 'testimonials', 'contact', 'footer'], 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=900&auto=format&fit=crop'),
 ];
 
 export const websiteCategories = [
@@ -49,14 +59,25 @@ export const websiteCategories = [
   { id: 'business', name: 'Business Landing' },
   { id: 'restaurant', name: 'Restaurant' },
   { id: 'ecommerce', name: 'E-commerce' },
-  { id: 'photography', name: 'Photography Studio' },
+  { id: 'photography', name: 'Photography' },
   { id: 'fitness', name: 'Gym & Fitness' },
   { id: 'education', name: 'Education' },
   { id: 'healthcare', name: 'Healthcare' },
   { id: 'real-estate', name: 'Real Estate' },
   { id: 'event', name: 'Event' },
+  { id: 'salon', name: 'Salon & Beauty' },
+  { id: 'cafe', name: 'Cafe & Bistro' },
+  { id: 'freelancer', name: 'Freelancer' },
+  { id: 'saas', name: 'SaaS Startup' },
+  { id: 'nonprofit', name: 'Nonprofit' },
+  { id: 'travel', name: 'Travel' },
+  { id: 'legal', name: 'Law Firm' },
+  { id: 'music', name: 'Music & Band' },
+  { id: 'pets', name: 'Pet Services' },
+  { id: 'construction', name: 'Construction' },
   { id: 'custom', name: 'Custom' },
 ];
 
 export const getWebsiteTemplate = (templateId) =>
   websiteTemplates.find((templateItem) => templateItem.id === templateId);
+

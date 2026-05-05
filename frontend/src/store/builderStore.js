@@ -1,16 +1,17 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { sectionBlocks, getSectionBlueprint } from '../data/sectionBlocks';
-import { getElementPreset } from '../data/elementPresets';
+import { getElementPreset, normalizeElementType } from '../data/elementPresets';
 import { getThemePreset } from '../data/themePresets';
 import { websiteTemplates, getWebsiteTemplate } from '../data/websiteTemplates';
 import { aiMockService } from '../services/aiMockService';
 import { projectStorage } from '../services/projectStorage';
+import { generateWebsiteCode } from '../services/codeGenerator';
 import { deepClone } from '../utils/deepClone';
 import { createId, rekeyTree } from '../utils/ids';
 import { createInteraction, runInteraction as resolveAndRunInteraction, validateInteractions } from '../utils/interactionResolver';
 import { slugify } from '../utils/slugify';
 import * as nodeOps from '../utils/nodeOperations';
-import { createNode, NODE_TYPES, LAYOUT_MODES, RESIZABLE_NODE_TYPES, CONTAINER_NODE_TYPES, TEXT_NODE_TYPES } from '../data/nodeSchema';
+import { createNode, NODE_TYPES, LAYOUT_MODES, CONTAINER_NODE_TYPES, TEXT_NODE_TYPES } from '../data/nodeSchema';
 
 const BuilderStoreContext = createContext(null);
 
@@ -120,7 +121,7 @@ export const BuilderProvider = ({ projectId, children }) => {
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const [selectedElementId, setSelectedElementId] = useState(null);
   const [selectedInteractionId, setSelectedInteractionId] = useState(null);
-  const [activeLeftTool, setActiveLeftTool] = useState('layers');
+  const [activeLeftTool, setActiveLeftTool] = useState('ai');
   const [activeDevice, setActiveDevice] = useState('desktop');
   const [builderMode, setBuilderModeState] = useState('design');
   const [activeTool, setActiveToolState] = useState('select');
@@ -133,6 +134,7 @@ export const BuilderProvider = ({ projectId, children }) => {
   const [future, setFuture] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [generatedCode, setGeneratedCode] = useState(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [toast, setToast] = useState(null);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
@@ -251,7 +253,12 @@ export const BuilderProvider = ({ projectId, children }) => {
     if (!project) return null;
     setIsSaving(true);
     try {
-      const saved = projectStorage.updateProject(project.id, project);
+      const projectWithNodes = {
+        ...project,
+        nodesMap,
+        generatedCode: generateWebsiteCode({ ...project, nodesMap }),
+      };
+      const saved = projectStorage.updateProject(project.id, projectWithNodes);
       setProjectState(saved);
       setLastSavedAt(new Date().toISOString());
       showToast('Project saved to local storage.', 'success');
@@ -262,17 +269,31 @@ export const BuilderProvider = ({ projectId, children }) => {
     } finally {
       setIsSaving(false);
     }
-  }, [project, showToast]);
+  }, [nodesMap, project, showToast]);
 
   const publishProject = useCallback(async () => {
     if (!project) return null;
-    const saved = projectStorage.updateProject(project.id, project);
+    const projectWithNodes = {
+      ...project,
+      nodesMap,
+      generatedCode: generateWebsiteCode({ ...project, nodesMap }),
+    };
+    const saved = projectStorage.updateProject(project.id, projectWithNodes);
     const published = projectStorage.publishProject(saved.id);
     setProjectState(published);
     setLastSavedAt(new Date().toISOString());
     showToast(`Published at /site/${published.slug}`, 'success');
     return published;
-  }, [project, showToast]);
+  }, [nodesMap, project, showToast]);
+
+  const generateCode = useCallback(() => {
+    if (!project) return null;
+    const code = generateWebsiteCode({ ...project, nodesMap });
+    setGeneratedCode(code);
+    commitProject((draft) => ({ ...draft, generatedCode: code }), { skipHistory: true });
+    showToast('Clean website code generated.', 'success');
+    return code;
+  }, [commitProject, nodesMap, project, showToast]);
 
   const selectSection = useCallback((sectionId) => {
     setSelectedSectionId(sectionId);
@@ -320,6 +341,10 @@ export const BuilderProvider = ({ projectId, children }) => {
       setSelectedSectionId(sectionWithElement.id);
       setSelectedElementId(nodeId);
       setSelectedInteractionId(null);
+    } else {
+      setSelectedSectionId(null);
+      setSelectedElementId(null);
+      setSelectedInteractionId(null);
     }
     return true;
   }, [clearSelection, sections]);
@@ -359,11 +384,31 @@ export const BuilderProvider = ({ projectId, children }) => {
   const addSection = useCallback((typeOrSection = 'hero') => {
     const section = typeof typeOrSection === 'string' ? rekeyTree(getSectionBlueprint(typeOrSection)) : rekeyTree(typeOrSection);
     commitProject((draft) => toPageSections(draft, draft.currentPageId, (items) => [...items, section]));
+    if (currentPage?.id) {
+      const migrated = nodeOps.migrateFromLegacy([{ ...currentPage, sections: [section] }]);
+      const migratedPage = migrated[currentPage.id];
+      commitNodesMap((map) => {
+        const next = { ...map };
+        for (const [id, node] of Object.entries(migrated)) {
+          if (id !== currentPage.id) next[id] = node;
+        }
+        const pageNode = next[currentPage.id] || createNode(NODE_TYPES.PAGE, {
+          id: currentPage.id,
+          name: currentPage.name || 'Page',
+        });
+        next[currentPage.id] = {
+          ...pageNode,
+          children: [...(pageNode.children || []), ...(migratedPage?.children || [])],
+        };
+        return next;
+      });
+    }
     setSelectedSectionId(section.id);
     setSelectedElementId(null);
+    setSelectedNodeIds([section.id]);
     showToast(`${section.name || 'Section'} added.`, 'success');
     return section;
-  }, [commitProject, showToast]);
+  }, [commitNodesMap, commitProject, currentPage, showToast]);
 
   const updateSection = useCallback((sectionId, patch) => {
     commitProject((draft) =>
@@ -420,9 +465,10 @@ export const BuilderProvider = ({ projectId, children }) => {
   }, [commitProject]);
 
   const addElement = useCallback((type = 'heading', targetSectionId = selectedSectionId, overrides = {}) => {
-    if (sectionTypes.has(type)) return addSection(type);
+    const normalizedType = normalizeElementType(type);
+    if (sectionTypes.has(normalizedType)) return addSection(normalizedType);
 
-    const preset = getElementPreset(type);
+    const preset = getElementPreset(normalizedType);
     const element = {
       ...rekeyTree(preset),
       ...overrides,
@@ -431,6 +477,14 @@ export const BuilderProvider = ({ projectId, children }) => {
       responsive: { ...(preset.responsive || {}), ...(overrides.responsive || {}) },
     };
     const ensureSectionId = targetSectionId || sections[0]?.id;
+    const selectedNode = selectedNodeIds.length === 1 ? nodesMap[selectedNodeIds[0]] : null;
+    const selectedNodeParent = selectedNode && CONTAINER_NODE_TYPES.has(selectedNode.type)
+      ? selectedNode.id
+      : null;
+    const firstPageNode = currentPage?.id
+      ? nodeOps.getPageRootNodes(nodesMap, currentPage.id)[0]?.id
+      : null;
+    const nodeParentId = selectedNodeParent || selectedNode?.parentId || ensureSectionId || firstPageNode || currentPage?.id || null;
 
     if (!ensureSectionId) {
       const section = rekeyTree({
@@ -441,8 +495,25 @@ export const BuilderProvider = ({ projectId, children }) => {
         elements: [element],
       });
       commitProject((draft) => toPageSections(draft, draft.currentPageId, (items) => [...items, section]));
+      if (currentPage?.id) {
+        const migrated = nodeOps.migrateFromLegacy([{ ...currentPage, sections: [section] }]);
+        const migratedPage = migrated[currentPage.id];
+        commitNodesMap((map) => {
+          const next = { ...map };
+          for (const [id, node] of Object.entries(migrated)) {
+            if (id !== currentPage.id) next[id] = node;
+          }
+          const pageNode = next[currentPage.id] || createNode(NODE_TYPES.PAGE, { id: currentPage.id, name: currentPage.name || 'Page' });
+          next[currentPage.id] = {
+            ...pageNode,
+            children: [...(pageNode.children || []), ...(migratedPage?.children || [])],
+          };
+          return next;
+        });
+      }
       setSelectedSectionId(section.id);
       setSelectedElementId(section.elements[0].id);
+      setSelectedNodeIds([section.elements[0].id]);
       return section.elements[0];
     }
 
@@ -453,11 +524,22 @@ export const BuilderProvider = ({ projectId, children }) => {
         ),
       ),
     );
+    let createdNodeId = element.id;
+    commitNodesMap((map) => {
+      const result = nodeOps.addNode(map, nodeParentId, {
+        ...element,
+        type: normalizedType,
+        parentId: nodeParentId,
+      });
+      createdNodeId = result.nodeId;
+      return result.nodesMap;
+    });
     setSelectedSectionId(ensureSectionId);
     setSelectedElementId(element.id);
-    showToast(`${element.name || type} added.`, 'success');
+    setSelectedNodeIds([createdNodeId]);
+    showToast(`${element.name || normalizedType} added.`, 'success');
     return element;
-  }, [addSection, commitProject, sections, selectedSectionId, showToast]);
+  }, [addSection, commitNodesMap, commitProject, currentPage, nodesMap, sections, selectedNodeIds, selectedSectionId, showToast]);
 
   const updateElement = useCallback((sectionId, elementId, patch) => {
     commitProject((draft) =>
@@ -553,28 +635,38 @@ export const BuilderProvider = ({ projectId, children }) => {
   }, [commitProject]);
 
   const updateSelectedStyles = useCallback((styles) => {
-    if (selectedElement) updateElement(selectedSectionId, selectedElementId, { styles });
+    if (selectedNodeIds.length) {
+      commitNodesMap((map) => selectedNodeIds.reduce((next, id) => nodeOps.updateNodeStyles(next, id, styles), map));
+    } else if (selectedElement) updateElement(selectedSectionId, selectedElementId, { styles });
     else if (selectedSection) updateSection(selectedSectionId, { styles });
     else showToast('Select a section or element first.', 'error');
-  }, [selectedElement, selectedElementId, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
+  }, [commitNodesMap, selectedElement, selectedElementId, selectedNodeIds, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
 
   const updateSelectedProps = useCallback((props) => {
+    if (selectedNodeIds.length === 1) {
+      commitNodesMap((map) => nodeOps.updateNodeProps(map, selectedNodeIds[0], props));
+      return true;
+    }
     if (!selectedElement) return showToast('Select an element first.', 'error');
     updateElement(selectedSectionId, selectedElementId, { props });
     return true;
-  }, [selectedElement, selectedElementId, selectedSectionId, showToast, updateElement]);
+  }, [commitNodesMap, selectedElement, selectedElementId, selectedNodeIds, selectedSectionId, showToast, updateElement]);
 
   const updateSelectedContent = useCallback((content) => {
-    if (selectedElement) updateElement(selectedSectionId, selectedElementId, { content });
+    if (selectedNodeIds.length === 1) {
+      commitNodesMap((map) => nodeOps.updateNodeContent(map, selectedNodeIds[0], content));
+    } else if (selectedElement) updateElement(selectedSectionId, selectedElementId, { content });
     else if (selectedSection) updateSection(selectedSectionId, { name: content });
     else showToast('Select text or a section first.', 'error');
-  }, [selectedElement, selectedElementId, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
+  }, [commitNodesMap, selectedElement, selectedElementId, selectedNodeIds, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
 
   const updateSelectedAnimation = useCallback((animation) => {
-    if (selectedElement) updateElement(selectedSectionId, selectedElementId, { animation: { ...(selectedElement.animation || {}), ...animation } });
+    if (selectedNodeIds.length) {
+      commitNodesMap((map) => selectedNodeIds.reduce((next, id) => nodeOps.updateNodeAnimation(next, id, animation), map));
+    } else if (selectedElement) updateElement(selectedSectionId, selectedElementId, { animation: { ...(selectedElement.animation || {}), ...animation } });
     else if (selectedSection) updateSection(selectedSectionId, { animation: { ...(selectedSection.animation || {}), ...animation } });
     else showToast('Select an item before applying animation.', 'error');
-  }, [selectedElement, selectedElementId, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
+  }, [commitNodesMap, selectedElement, selectedElementId, selectedNodeIds, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
 
   const updateSelectedResponsive = useCallback((deviceOrResponsive, partialResponsive) => {
     const responsive =
@@ -582,17 +674,36 @@ export const BuilderProvider = ({ projectId, children }) => {
         ? { [deviceOrResponsive]: { ...((selectedItem?.responsive || {})[deviceOrResponsive] || {}), ...partialResponsive } }
         : deviceOrResponsive;
 
-    if (selectedElement) updateElement(selectedSectionId, selectedElementId, { responsive });
+    if (selectedNodeIds.length) {
+      commitNodesMap((map) => selectedNodeIds.reduce((next, id) => (
+        partialResponsive && typeof deviceOrResponsive === 'string'
+          ? nodeOps.updateNodeResponsive(next, id, deviceOrResponsive, partialResponsive)
+          : nodeOps.updateNode(next, id, { responsive })
+      ), map));
+    } else if (selectedElement) updateElement(selectedSectionId, selectedElementId, { responsive });
     else if (selectedSection) updateSection(selectedSectionId, { responsive: { ...(selectedSection.responsive || {}), ...responsive } });
     else showToast('Select an item first.', 'error');
-  }, [selectedElement, selectedElementId, selectedItem, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
+  }, [commitNodesMap, selectedElement, selectedElementId, selectedItem, selectedNodeIds, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
 
   const duplicateSelected = useCallback(() => {
+    if (selectedNodeIds.length) {
+      const newIds = [];
+      commitNodesMap((map) => selectedNodeIds.reduce((next, id) => {
+        const result = nodeOps.duplicateNode(next, id);
+        if (result.newNodeId) newIds.push(result.newNodeId);
+        return result.nodesMap;
+      }, map));
+      if (newIds.length) {
+        setSelectedNodeIds(newIds);
+        showToast(`${newIds.length} node(s) duplicated.`, 'success');
+      }
+      return newIds;
+    }
     if (selectedElement) return duplicateElement(selectedSectionId, selectedElementId);
     if (selectedSection) return duplicateSection(selectedSectionId);
     showToast('Select a section or element to duplicate.', 'error');
     return null;
-  }, [duplicateElement, duplicateSection, selectedElement, selectedElementId, selectedSection, selectedSectionId, showToast]);
+  }, [commitNodesMap, duplicateElement, duplicateSection, selectedElement, selectedElementId, selectedNodeIds, selectedSection, selectedSectionId, showToast]);
 
   const deleteSelected = useCallback(() => {
     if (selectedInteraction) {
@@ -605,25 +716,43 @@ export const BuilderProvider = ({ projectId, children }) => {
       showToast('Prototype connection deleted.', 'success');
       return true;
     }
+    if (selectedNodeIds.length) {
+      commitNodesMap((map) => nodeOps.deleteNodes(map, selectedNodeIds));
+      setSelectedNodeIds([]);
+      setSelectedSectionId(null);
+      setSelectedElementId(null);
+      showToast(`${selectedNodeIds.length} node(s) deleted.`, 'success');
+      return true;
+    }
     if (selectedElement) return deleteElement(selectedSectionId, selectedElementId);
     if (selectedSection) return deleteSection(selectedSectionId);
     showToast('Select a section or element to delete.', 'error');
     return null;
-  }, [commitProject, deleteElement, deleteSection, selectedElement, selectedElementId, selectedInteraction, selectedInteractionId, selectedSection, selectedSectionId, showToast]);
+  }, [commitNodesMap, commitProject, deleteElement, deleteSection, selectedElement, selectedElementId, selectedInteraction, selectedInteractionId, selectedNodeIds, selectedSection, selectedSectionId, showToast]);
 
   const lockSelected = useCallback(() => {
+    if (selectedNodeIds.length) {
+      commitNodesMap((map) => selectedNodeIds.reduce((next, id) => nodeOps.lockNode(next, id), map));
+      showToast('Lock state updated.', 'success');
+      return true;
+    }
     if (selectedElement) return updateElement(selectedSectionId, selectedElementId, { locked: !selectedElement.locked });
     if (selectedSection) return updateSection(selectedSectionId, { locked: !selectedSection.locked });
     showToast('Select a section or element to lock.', 'error');
     return null;
-  }, [selectedElement, selectedElementId, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
+  }, [commitNodesMap, selectedElement, selectedElementId, selectedNodeIds, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
 
   const hideSelected = useCallback(() => {
+    if (selectedNodeIds.length) {
+      commitNodesMap((map) => selectedNodeIds.reduce((next, id) => nodeOps.hideNode(next, id), map));
+      showToast('Visibility updated.', 'success');
+      return true;
+    }
     if (selectedElement) return updateElement(selectedSectionId, selectedElementId, { hidden: !selectedElement.hidden });
     if (selectedSection) return updateSection(selectedSectionId, { hidden: !selectedSection.hidden });
     showToast('Select a section or element to hide.', 'error');
     return null;
-  }, [selectedElement, selectedElementId, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
+  }, [commitNodesMap, selectedElement, selectedElementId, selectedNodeIds, selectedSection, selectedSectionId, showToast, updateElement, updateSection]);
 
   const moveElement = useCallback((sectionId, elementId, direction) => {
     commitProject((draft) =>
@@ -664,6 +793,27 @@ export const BuilderProvider = ({ projectId, children }) => {
   }, []);
 
   const nudgeSelected = useCallback((dx, dy) => {
+    if (selectedNodeIds.length) {
+      commitNodesMap((map) => selectedNodeIds.reduce((next, id) => {
+        const node = next[id];
+        if (!node || node.locked) return next;
+        if (node.layout?.positionMode === LAYOUT_MODES.FREE) {
+          return nodeOps.dragNode(next, id, {
+            x: (node.layout?.x || 0) + dx,
+            y: (node.layout?.y || 0) + dy,
+          });
+        }
+        return nodeOps.updateNode(next, id, {
+          styles: {
+            position: node.styles?.position || 'relative',
+            left: `${pxNumber(node.styles?.left) + dx}px`,
+            top: `${pxNumber(node.styles?.top) + dy}px`,
+          },
+        });
+      }, map));
+      return true;
+    }
+
     const patchNode = (node, patcher) => ({
       ...node,
       styles: {
@@ -691,7 +841,7 @@ export const BuilderProvider = ({ projectId, children }) => {
     if (selectedElement) return updateElement(selectedSectionId, selectedElementId, { styles: patchNode(selectedElement).styles });
     if (selectedSection) return updateSection(selectedSectionId, { styles: patchNode(selectedSection).styles });
     return false;
-  }, [commitProject, selectedElement, selectedElementId, selectedNodeIds, selectedSection, selectedSectionId, updateElement, updateSection]);
+  }, [commitNodesMap, commitProject, selectedElement, selectedElementId, selectedNodeIds, selectedSection, selectedSectionId, updateElement, updateSection]);
 
   const alignSelected = useCallback((alignment) => {
     if (!selectedItem) return showToast('Select a node before aligning.', 'error');
@@ -708,14 +858,32 @@ export const BuilderProvider = ({ projectId, children }) => {
   }, [selectedItem, showToast, updateSelectedStyles]);
 
   const copySelected = useCallback(() => {
+    if (selectedNodeIds.length) {
+      const items = selectedNodeIds.map((id) => nodesMap[id]).filter(Boolean);
+      if (!items.length) return showToast('Select a node to copy.', 'error');
+      setClipboard({ kind: 'nodes', items: deepClone(items), nodeIds: [...selectedNodeIds] });
+      showToast(`${items.length} node(s) copied.`, 'success');
+      return true;
+    }
     if (!selectedItem) return showToast('Select a node to copy.', 'error');
     setClipboard({ kind: selectedElement ? 'element' : 'section', item: deepClone(selectedItem), sectionId: selectedSectionId });
     showToast('Copied selected node.', 'success');
     return true;
-  }, [selectedElement, selectedItem, selectedSectionId, showToast]);
+  }, [nodesMap, selectedElement, selectedItem, selectedNodeIds, selectedSectionId, showToast]);
 
   const pasteSelected = useCallback(() => {
-    if (!clipboard?.item) return showToast('Clipboard is empty.', 'error');
+    if (!clipboard?.item && clipboard?.kind !== 'nodes') return showToast('Clipboard is empty.', 'error');
+    if (clipboard.kind === 'nodes') {
+      const pastedIds = [];
+      commitNodesMap((map) => (clipboard.nodeIds || []).reduce((next, id) => {
+        const result = nodeOps.duplicateNode(next, id);
+        if (result.newNodeId) pastedIds.push(result.newNodeId);
+        return result.nodesMap;
+      }, map));
+      if (pastedIds.length) setSelectedNodeIds(pastedIds);
+      showToast('Pasted node selection.', 'success');
+      return pastedIds;
+    }
     if (clipboard.kind === 'section') return duplicateSection(clipboard.item.id);
     const targetSectionId = selectedSectionId || sections[0]?.id;
     if (!targetSectionId) {
@@ -738,27 +906,49 @@ export const BuilderProvider = ({ projectId, children }) => {
     setSelectedNodeIds([pasted.id]);
     showToast('Pasted node.', 'success');
     return pasted;
-  }, [addSection, clipboard, commitProject, duplicateSection, sections, selectedSectionId, showToast]);
+  }, [addSection, clipboard, commitNodesMap, commitProject, currentPage, duplicateSection, nodesMap, sections, selectedSectionId, showToast]);
 
   const selectAllNodes = useCallback(() => {
-    const ids = sections.flatMap((section) => [section.id, ...(section.elements || []).map((element) => element.id)]);
+    const ids = currentPage?.id
+      ? nodeOps.flattenTree(nodesMap, currentPage.id).map((node) => node.id).filter((id) => id !== currentPage.id)
+      : sections.flatMap((section) => [section.id, ...(section.elements || []).map((element) => element.id)]);
     setSelectedNodeIds(ids);
     setSelectedSectionId(null);
     setSelectedElementId(null);
     setSelectedInteractionId(null);
     showToast(`${ids.length} nodes selected.`);
-  }, [sections, showToast]);
+  }, [currentPage, nodesMap, sections, showToast]);
 
   const groupSelected = useCallback(() => {
     if (selectedNodeIds.length < 2) return showToast('Select two or more nodes before grouping.', 'error');
-    showToast('Grouping is ready as a structured placeholder; nested container wrapping is the next backend-safe step.');
+    let groupId = null;
+    commitNodesMap((map) => {
+      const result = nodeOps.groupNodes(map, selectedNodeIds);
+      groupId = result.groupId;
+      return result.nodesMap;
+    });
+    if (!groupId) {
+      showToast('Group nodes inside the same parent to preserve layout.', 'error');
+      return false;
+    }
+    setSelectedNodeIds([groupId]);
+    showToast('Grouped selected nodes.', 'success');
     return true;
-  }, [selectedNodeIds, showToast]);
+  }, [commitNodesMap, selectedNodeIds, showToast]);
 
   const ungroupSelected = useCallback(() => {
-    showToast('Ungroup is ready as a structured placeholder for grouped container nodes.');
+    const groupId = selectedNodeIds.length === 1 ? selectedNodeIds[0] : null;
+    const group = groupId ? nodesMap[groupId] : null;
+    if (!group || group.type !== NODE_TYPES.GROUP) {
+      showToast('Select one group to ungroup.', 'error');
+      return false;
+    }
+    const childIds = group.children || [];
+    commitNodesMap((map) => nodeOps.ungroupNode(map, groupId));
+    setSelectedNodeIds(childIds);
+    showToast('Ungrouped.', 'success');
     return true;
-  }, [showToast]);
+  }, [commitNodesMap, nodesMap, selectedNodeIds, showToast]);
 
   const applyTheme = useCallback((themeIdOrTheme) => {
     const theme = typeof themeIdOrTheme === 'string' ? getThemePreset(themeIdOrTheme) : themeIdOrTheme;
@@ -775,10 +965,11 @@ export const BuilderProvider = ({ projectId, children }) => {
     if (!template) return showToast('Template not found.', 'error');
     const pages = rekeyTree(deepClone(template.pages));
     const homePage = pages.find((page) => page.isHome) || pages[0];
+    const appendedSections = rekeyTree(deepClone(template.sections || []));
 
     commitProject((draft) => {
       if (mode === 'append') {
-        return toPageSections(draft, draft.currentPageId, (items) => [...items, ...rekeyTree(deepClone(template.sections || []))]);
+        return toPageSections(draft, draft.currentPageId, (items) => [...items, ...appendedSections]);
       }
       return {
         ...draft,
@@ -790,11 +981,30 @@ export const BuilderProvider = ({ projectId, children }) => {
         sections: homePage?.sections || [],
       };
     });
+    if (mode === 'replace') {
+      commitNodesMap(nodeOps.migrateFromLegacy(pages));
+    } else if (currentPage?.id && appendedSections.length) {
+      const migrated = nodeOps.migrateFromLegacy([{ ...currentPage, sections: appendedSections }]);
+      const migratedPage = migrated[currentPage.id];
+      commitNodesMap((map) => {
+        const next = { ...map };
+        for (const [id, node] of Object.entries(migrated)) {
+          if (id !== currentPage.id) next[id] = node;
+        }
+        const pageNode = next[currentPage.id] || createNode(NODE_TYPES.PAGE, { id: currentPage.id, name: currentPage.name || 'Page' });
+        next[currentPage.id] = {
+          ...pageNode,
+          children: [...(pageNode.children || []), ...(migratedPage?.children || [])],
+        };
+        return next;
+      });
+    }
     setSelectedSectionId(null);
     setSelectedElementId(null);
+    setSelectedNodeIds([]);
     showToast(`${template.name} applied.`, 'success');
     return template;
-  }, [commitProject, showToast]);
+  }, [commitNodesMap, commitProject, currentPage, showToast]);
 
   const generateMockSection = useCallback((type) => {
     const section = aiMockService.generateSection(type, project?.businessDetails || {});
@@ -813,8 +1023,10 @@ export const BuilderProvider = ({ projectId, children }) => {
       currentPageId: homePage.id,
       sections: homePage.sections,
     }));
+    commitNodesMap(nodeOps.migrateFromLegacy(pages));
+    setSelectedNodeIds([]);
     showToast('Mock AI website generated.', 'success');
-  }, [commitProject, project, showToast]);
+  }, [commitNodesMap, commitProject, project, showToast]);
 
   const generateSEO = useCallback(() => {
     const seo = aiMockService.generateSEO(project);
@@ -823,16 +1035,18 @@ export const BuilderProvider = ({ projectId, children }) => {
   }, [commitProject, project, showToast]);
 
   const rewriteSelectedText = useCallback((tone = 'professional') => {
-    if (!selectedElement || !textTypes.has(selectedElement.type)) return showToast('Select a text-based element first.', 'error');
-    const text = typeof selectedElement.content === 'string' ? selectedElement.content : selectedElement.content?.body || selectedElement.content?.title || '';
+    const selectedNode = selectedNodeIds.length === 1 ? nodesMap[selectedNodeIds[0]] : null;
+    const textItem = selectedNode || selectedElement;
+    if (!textItem || (!textTypes.has(textItem.type) && !TEXT_NODE_TYPES.has(textItem.type))) return showToast('Select a text-based element first.', 'error');
+    const text = typeof textItem.content === 'string' ? textItem.content : textItem.content?.body || textItem.content?.title || '';
     const rewritten = aiMockService.rewriteText(text, tone);
-    if (typeof selectedElement.content === 'object') {
-      updateSelectedContent({ ...selectedElement.content, body: rewritten });
+    if (typeof textItem.content === 'object') {
+      updateSelectedContent({ ...textItem.content, body: rewritten });
     } else {
       updateSelectedContent(rewritten);
     }
     showToast('Text updated with mock AI.', 'success');
-  }, [selectedElement, showToast, updateSelectedContent]);
+  }, [nodesMap, selectedElement, selectedNodeIds, showToast, updateSelectedContent]);
 
   const updateProjectSEO = useCallback((seoPatch) => {
     commitProject((draft) => ({
@@ -850,7 +1064,7 @@ export const BuilderProvider = ({ projectId, children }) => {
     commitProject((draft) => ({
       ...draft,
       ...metaPatch,
-      slug: metaPatch.name ? slugify(metaPatch.name) : draft.slug,
+      slug: metaPatch.slug ? slugify(metaPatch.slug) : metaPatch.name ? slugify(metaPatch.name) : draft.slug,
     }));
   }, [commitProject]);
 
@@ -881,6 +1095,23 @@ export const BuilderProvider = ({ projectId, children }) => {
     commitProject((draft) => ({
       ...draft,
       pages: draft.pages.map((page) => (page.id === pageId ? { ...page, name, slug: slugify(name), path: page.isHome ? '/' : `/${slugify(name)}` } : page)),
+    }));
+  }, [commitProject]);
+
+  const updatePage = useCallback((pageId, patch) => {
+    commitProject((draft) => ({
+      ...draft,
+      pages: (draft.pages || []).map((page) => {
+        if (page.id !== pageId) return page;
+        const nextSlug = patch.slug ? slugify(patch.slug) : page.slug;
+        return {
+          ...page,
+          ...patch,
+          slug: nextSlug,
+          path: page.isHome ? '/' : `/${nextSlug}`,
+          seo: { ...(page.seo || {}), ...(patch.seo || {}) },
+        };
+      }),
     }));
   }, [commitProject]);
 
@@ -1036,24 +1267,40 @@ export const BuilderProvider = ({ projectId, children }) => {
   const validateRoutes = useCallback(() => validateInteractions(project), [project]);
 
   const undo = useCallback(() => {
+    if (!history.length) return;
+    const previous = history[history.length - 1];
+    if (previous?.type === 'nodes') {
+      setHistory((items) => items.slice(0, -1));
+      setFuture((items) => [{ type: 'nodes', data: nodesMap }, ...items]);
+      setNodesMap(previous.data || {});
+      return;
+    }
+
     setProjectState((current) => {
-      if (!history.length || !current) return current;
-      const previous = history[history.length - 1];
+      if (!current) return current;
       setHistory((items) => items.slice(0, -1));
       setFuture((items) => [current, ...items]);
       return previous;
     });
-  }, [history]);
+  }, [history, nodesMap]);
 
   const redo = useCallback(() => {
+    if (!future.length) return;
+    const next = future[0];
+    if (next?.type === 'nodes') {
+      setFuture((items) => items.slice(1));
+      setHistory((items) => [...items, { type: 'nodes', data: nodesMap }]);
+      setNodesMap(next.data || {});
+      return;
+    }
+
     setProjectState((current) => {
-      if (!future.length || !current) return current;
-      const next = future[0];
+      if (!current) return current;
       setFuture((items) => items.slice(1));
       setHistory((items) => [...items, current]);
       return next;
     });
-  }, [future]);
+  }, [future, nodesMap]);
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // NODE-BASED ACTIONS (new system)
@@ -1077,16 +1324,18 @@ export const BuilderProvider = ({ projectId, children }) => {
 
   const addNodeToMap = useCallback((parentId, nodeData, index) => {
     let result;
+    const resolvedParentId = parentId || currentPage?.id || null;
+    const normalizedData = { ...nodeData, type: normalizeElementType(nodeData?.type || 'container') };
     commitNodesMap((map) => {
-      result = nodeOps.addNode(map, parentId, nodeData, index);
+      result = nodeOps.addNode(map, resolvedParentId, normalizedData, index);
       return result.nodesMap;
     });
     if (result?.nodeId) {
       setSelectedNodeIds([result.nodeId]);
-      showToast(`${nodeData.name || nodeData.type || 'Node'} added.`, 'success');
+      showToast(`${normalizedData.name || normalizedData.type || 'Node'} added.`, 'success');
     }
     return result?.nodeId;
-  }, [commitNodesMap, showToast]);
+  }, [commitNodesMap, currentPage, showToast]);
 
   const updateNodeInMap = useCallback((nodeId, patch) => {
     commitNodesMap((map) => nodeOps.updateNode(map, nodeId, patch));
@@ -1221,15 +1470,15 @@ export const BuilderProvider = ({ projectId, children }) => {
 
   const pasteNodesInMap = useCallback(() => {
     if (!clipboard?.nodeIds?.length) return showToast('Clipboard is empty.', 'error');
-    for (const item of clipboard.items || []) {
-      const cloned = { ...deepClone(item), id: createId('node') };
-      const parentId = item.parentId || currentPage?.id;
-      if (parentId) {
-        commitNodesMap((map) => nodeOps.addNode(map, parentId, cloned).nodesMap);
-      }
-    }
+    const pastedIds = [];
+    commitNodesMap((map) => clipboard.nodeIds.reduce((next, id) => {
+      const result = nodeOps.duplicateNode(next, id);
+      if (result.newNodeId) pastedIds.push(result.newNodeId);
+      return result.nodesMap;
+    }, map));
+    if (pastedIds.length) setSelectedNodeIds(pastedIds);
     showToast('Pasted.', 'success');
-  }, [clipboard, commitNodesMap, currentPage, showToast]);
+  }, [clipboard, commitNodesMap, showToast]);
 
   // Derived: get node tree for current page
   const nodeTree = useMemo(() => {
@@ -1259,6 +1508,7 @@ export const BuilderProvider = ({ projectId, children }) => {
     activeDevice,
     builderMode,
     activeTool,
+    selectedNodeId: selectedNodeIds[0] || null,
     selectedNodeIds,
     clipboard,
     contextMenu,
@@ -1268,6 +1518,7 @@ export const BuilderProvider = ({ projectId, children }) => {
     future,
     isSaving,
     lastSavedAt,
+    generatedCode,
     previewMode,
     toast,
     leftPanelCollapsed,
@@ -1281,6 +1532,7 @@ export const BuilderProvider = ({ projectId, children }) => {
     loadProject,
     saveProject,
     publishProject,
+    generateCode,
     selectSection,
     selectElement,
     selectInteraction,
@@ -1359,6 +1611,7 @@ export const BuilderProvider = ({ projectId, children }) => {
     addAsset,
     addPage,
     renamePage,
+    updatePage,
     duplicatePage,
     deletePage,
     setHomePage,
@@ -1402,8 +1655,8 @@ export const BuilderProvider = ({ projectId, children }) => {
     activeDevice, activeLeftTool, activeTool, addAsset, addElement, addInteraction, addPage, addSection, alignSelected, applyTemplate, applyTheme,
     builderMode, cancelConnection, canvasPan, clearSelection, clipboard, closeContextMenu, completeConnection, connectionDraft, contextMenu, copySelected, currentPage, deleteElement, deleteInteraction,
     deletePage, deleteSection, deleteSelected, duplicateElement, duplicatePage,
-    duplicateSection, duplicateSelected, future, fullscreenCanvas, generateMockSection, generateMockWebsite, generateSEO, groupSelected, hideSelected, history, isSaving,
-    fitRequestId, fitToScreen, lastSavedAt, loadProject, moveSection, nudgeSelected, openContextMenu, pasteSelected, previewMode, project, publishProject, redo, renamePage,
+    duplicateSection, duplicateSelected, future, fullscreenCanvas, generateCode, generatedCode, generateMockSection, generateMockWebsite, generateSEO, groupSelected, hideSelected, history, isSaving,
+    fitRequestId, fitToScreen, lastSavedAt, loadProject, moveSection, nudgeSelected, openContextMenu, pasteSelected, previewMode, project, publishProject, redo, renamePage, updatePage,
     leftPanelCollapsed, lockSelected, moveSelectedDown, moveSelectedUp, reorderElements, reorderSections,
     rewriteSelectedText, runInteraction, runNodeInteraction, saveProject, sections, selectAllNodes, selectElement, selectInteraction, selectNode, selectNodes, selectSection,
     selectedElement, selectedElementId, selectedInteraction, selectedInteractionId,

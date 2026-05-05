@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ImagePlus, Wand2 } from 'lucide-react';
 import { useBuilderStore } from '../../../store/builderStore';
 import { ActionButton, PanelSection, PanelShell } from './PanelShell';
@@ -6,29 +6,43 @@ import { ActionButton, PanelSection, PanelShell } from './PanelShell';
 export default function MediaPanel() {
   const inputRef = useRef(null);
   const [url, setUrl] = useState('');
-  const { project, addAsset, addElement, updateSelectedProps, selectedElement, selectedSectionId, showToast } = useBuilderStore();
+  const [uploadType, setUploadType] = useState('image');
+  const [accept, setAccept] = useState('image/*');
+  const { project, addAsset, addElement, updateSelectedProps, selectedElement, getSelectedNode, selectedSectionId, showToast } = useBuilderStore();
+  const selectedNode = getSelectedNode;
+
+  const startUpload = (type, acceptValue = '*/*') => {
+    setUploadType(type);
+    setAccept(acceptValue);
+    inputRef.current?.click();
+  };
 
   const handleFile = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => addAsset({ name: file.name, type: 'image', src: reader.result });
+    reader.onload = () => addAsset({ name: file.name, type: uploadType, src: reader.result });
     reader.readAsDataURL(file);
     event.target.value = '';
   };
 
   const insertAsset = (asset) => {
-    if (selectedElement?.type === 'image') updateSelectedProps({ src: asset.src, alt: asset.name });
+    if ((selectedNode?.type === 'image' || selectedElement?.type === 'image') && asset.type !== 'video') updateSelectedProps({ src: asset.src, alt: asset.name });
+    else if (asset.type === 'video') addElement('video', selectedSectionId, { props: { src: asset.src, alt: asset.name } });
+    else if (asset.type === 'lottie') addElement('lottieAnimation', selectedSectionId, { props: { src: asset.src }, content: asset.name });
     else addElement('image', selectedSectionId, { props: { src: asset.src, alt: asset.name } });
-    showToast('Image ready on canvas. Select it to replace URL or alt text.');
+    showToast('Media ready on canvas. Select it to replace URL, alt text, or settings.');
   };
 
   return (
     <PanelShell eyebrow="Assets" title="Media Library">
-      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+      <input ref={inputRef} type="file" accept={accept} onChange={handleFile} className="hidden" />
       <PanelSection title="Upload and insert">
-        <ActionButton icon={ImagePlus} label="Upload image" onClick={() => inputRef.current?.click()} />
-        <ActionButton icon={ImagePlus} label="Upload logo" onClick={() => inputRef.current?.click()} />
+        <ActionButton icon={ImagePlus} label="Image Upload" onClick={() => startUpload('image', 'image/*')} />
+        <ActionButton icon={ImagePlus} label="Logo Upload" onClick={() => startUpload('logo', 'image/*')} />
+        <ActionButton icon={ImagePlus} label="Video Upload" onClick={() => startUpload('video', 'video/*')} />
+        <ActionButton icon={ImagePlus} label="SVG Upload" onClick={() => startUpload('svg', 'image/svg+xml')} />
+        <ActionButton icon={ImagePlus} label="Lottie Animation Upload" onClick={() => startUpload('lottie', '.json,application/json')} />
         <div className="rounded-2xl border border-slate-800 bg-slate-950 p-3">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Add image URL</label>
           <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://..." className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-white outline-none" />
@@ -36,8 +50,8 @@ export default function MediaPanel() {
             Add URL media
           </button>
         </div>
-        <ActionButton icon={Wand2} label="Stock image placeholder" onClick={() => showToast('Stock image search placeholder opened.')} />
-        <ActionButton icon={Wand2} label="Icon library placeholder" onClick={() => showToast('Icon library placeholder opened.')} />
+        <ActionButton icon={Wand2} label="Icon Library" onClick={() => addElement('icon')} />
+        <ActionButton icon={Wand2} label="Stock Image Search" onClick={() => showToast('Stock image search placeholder opened. API connection required for live search.')} />
       </PanelSection>
       <PanelSection title="Uploaded assets">
         <div className="grid grid-cols-2 gap-2">
@@ -50,8 +64,8 @@ export default function MediaPanel() {
         </div>
         {!project?.assets?.length && <p className="rounded-2xl border border-dashed border-slate-800 p-4 text-xs text-slate-500">No uploaded assets yet.</p>}
       </PanelSection>
-      <PanelSection title="Media magic">
-        {['Crop', 'Resize', 'Optimize image', 'Remove background', 'Convert to WebP', 'AI image generator', 'SVG editor'].map((label) => (
+      <PanelSection title="Storage and media magic">
+        {['Image Library', 'Business Photo Storage', 'Product Image Storage', 'Crop', 'Resize', 'Optimize image', 'Remove background', 'Convert to WebP', 'AI image generator', 'SVG editor'].map((label) => (
           <ActionButton key={label} icon={Wand2} label={label} onClick={() => showToast(`${label} coming soon.`)} />
         ))}
       </PanelSection>

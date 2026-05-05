@@ -4,8 +4,10 @@ import { PanelShell } from './PanelShell';
 import InteractionList from '../prototype/InteractionList';
 import RouteMapPanel from '../prototype/RouteMapPanel';
 
+const pagePresets = ['Home', 'About', 'Services', 'Contact', 'Products', 'Pricing', 'Blog', 'Gallery', 'Portfolio', 'FAQ', 'Booking', 'Restaurant Menu', 'Shop Page', 'Checkout Page', 'Thank You Page'];
+
 export default function PagesPanel() {
-  const { project, currentPage, addPage, renamePage, duplicatePage, deletePage, setHomePage, switchPage, validateRoutes, deleteInteraction, showToast } = useBuilderStore();
+  const { project, currentPage, addPage, renamePage, updatePage, duplicatePage, deletePage, setHomePage, switchPage, validateRoutes, deleteInteraction, showToast } = useBuilderStore();
   const warnings = validateRoutes();
 
   return (
@@ -14,13 +16,20 @@ export default function PagesPanel() {
         <Plus size={15} />
         Add Page
       </button>
+      <div className="mb-4 grid grid-cols-2 gap-2">
+        {pagePresets.map((name) => (
+          <button key={name} type="button" onClick={() => addPage(name)} className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:border-indigo-500 hover:text-white">
+            {name}
+          </button>
+        ))}
+      </div>
       <div className="space-y-3">
         {(project?.pages || []).map((page) => (
           <div key={page.id} className={`rounded-2xl border p-3 ${currentPage?.id === page.id ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-800 bg-slate-950'}`}>
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => switchPage(page.id)} className="flex-1 text-left">
                 <input value={page.name} onChange={(event) => renamePage(page.id, event.target.value)} className="w-full rounded-lg bg-transparent text-xs font-black uppercase tracking-widest text-white outline-none" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">/{page.slug}</span>
+                <input value={page.slug || ''} onChange={(event) => updatePage(page.id, { slug: event.target.value })} className="mt-1 w-full rounded-lg bg-slate-900 px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-slate-500 outline-none focus:text-white" />
               </button>
               <button type="button" title="Set home page" onClick={() => setHomePage(page.id)} className={page.isHome ? 'text-indigo-300' : 'text-slate-500 hover:text-white'}><Home size={14} /></button>
               <button type="button" title="Duplicate page" onClick={() => duplicatePage(page.id)} className="text-slate-500 hover:text-white"><Copy size={14} /></button>
@@ -29,6 +38,13 @@ export default function PagesPanel() {
           </div>
         ))}
       </div>
+      {currentPage && (
+        <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950 p-4">
+          <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Current page SEO</p>
+          <input value={currentPage.seo?.metaTitle || ''} onChange={(event) => updatePage(currentPage.id, { seo: { metaTitle: event.target.value } })} placeholder="Meta title" className="mb-2 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-white outline-none" />
+          <textarea value={currentPage.seo?.metaDescription || ''} onChange={(event) => updatePage(currentPage.id, { seo: { metaDescription: event.target.value } })} placeholder="Meta description" className="w-full resize-none rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-white outline-none" rows={3} />
+        </div>
+      )}
       <div className="mt-6 space-y-3">
         <div>
           <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Broken route validation</p>

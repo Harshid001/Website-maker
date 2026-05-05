@@ -3,6 +3,7 @@ import { createId, rekeyTree } from '../utils/ids';
 import { slugify } from '../utils/slugify';
 import { getThemePreset } from '../data/themePresets';
 import { getSectionBlueprint } from '../data/sectionBlocks';
+import { generateWebsiteCode } from './codeGenerator';
 
 export const PROJECTS_KEY = 'shopcraft_projects';
 export const CURRENT_PROJECT_KEY = 'shopcraft_current_project';
@@ -74,6 +75,7 @@ export const normalizeProject = (project = {}) => {
     currentPageId: currentPage?.id,
     nodesMap: project.nodesMap || {},
     nodes: project.nodes || {},
+    generatedCode: project.generatedCode || null,
     interactions: project.interactions || [],
     routes: project.routes || [],
     theme,
@@ -161,6 +163,7 @@ export const publishProject = (projectId) => {
 
   const published = updateProject(projectId, {
     ...project,
+    generatedCode: project.generatedCode || generateWebsiteCode(project),
     published: true,
     status: 'published',
     slug: project.slug || slugify(project.name),

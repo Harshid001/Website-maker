@@ -1,21 +1,24 @@
-import React from 'react';
 import { Component } from 'lucide-react';
 import { useBuilderStore } from '../../../store/builderStore';
 import { ActionButton, PanelSection, PanelShell } from './PanelShell';
 
 const components = [
-  ['hero', 'Navbar'],
-  ['footer', 'Footer'],
-  ['card', 'Service card'],
-  ['productCard', 'Product card'],
-  ['testimonialCard', 'Testimonial card'],
-  ['pricingCard', 'Pricing card'],
-  ['form', 'Contact form'],
-  ['form', 'Booking form'],
-  ['button', 'Button group'],
-  ['services', 'Feature grid'],
-  ['socialLinks', 'Social links'],
-  ['button', 'WhatsApp floating button'],
+  ['navbar', 'Navbar', 'section'],
+  ['footer', 'Footer', 'section'],
+  ['button', 'Buttons'],
+  ['card', 'Cards'],
+  ['contactForm', 'Forms'],
+  ['productCard', 'Product Cards'],
+  ['serviceCard', 'Service Cards'],
+  ['pricingCard', 'Pricing Cards'],
+  ['testimonialCard', 'Testimonial Cards'],
+  ['searchBar', 'Search Bar'],
+  ['tabs', 'Tabs'],
+  ['accordion', 'Accordion'],
+  ['modal', 'Modal'],
+  ['dropdown', 'Dropdown'],
+  ['sidebar', 'Sidebar'],
+  ['breadcrumb', 'Breadcrumb'],
 ];
 
 export default function ComponentsPanel() {
@@ -23,8 +26,8 @@ export default function ComponentsPanel() {
   return (
     <PanelShell eyebrow="Reusable UI" title="Components">
       <PanelSection title="Components">
-        {components.map(([type, label]) => (
-          <ActionButton key={label} icon={Component} label={label} onClick={() => (['hero', 'footer', 'services'].includes(type) ? addSection(type) : addElement(type))} />
+        {components.map(([type, label, mode]) => (
+          <ActionButton key={label} icon={Component} label={label} onClick={() => (mode === 'section' ? addSection(type) : addElement(type))} />
         ))}
       </PanelSection>
     </PanelShell>

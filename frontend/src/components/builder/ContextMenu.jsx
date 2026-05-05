@@ -33,8 +33,8 @@ export default function ContextMenu() {
   const {
     contextMenu,
     closeContextMenu,
+    nodesMap,
     selectedNodeIds,
-    getSelectedNode,
     duplicateNodeInMap,
     deleteNodesFromMap,
     lockNodeInMap,
@@ -51,7 +51,7 @@ export default function ContextMenu() {
   if (!contextMenu) return null;
   const position = contextMenu.position || { x: 0, y: 0 };
   const targetId = contextMenu.target?.id || selectedNodeIds[0];
-  const targetNode = getSelectedNode;
+  const targetNode = targetId ? nodesMap[targetId] : null;
 
   const run = (action) => {
     action?.();

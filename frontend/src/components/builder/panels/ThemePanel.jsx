@@ -1,4 +1,3 @@
-import React from 'react';
 import { themePresets } from '../../../data/themePresets';
 import { useBuilderStore } from '../../../store/builderStore';
 import { PanelSection, PanelShell } from './PanelShell';
@@ -64,9 +63,28 @@ export default function ThemePanel() {
           Border radius
           <input value={theme?.radius || ''} onChange={(event) => updateThemeToken('radius', event.target.value)} className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-white outline-none" />
         </label>
-        <button type="button" onClick={() => showToast('Button, card, spacing, glass, and shadow presets are ready for backend expansion.')} className="w-full rounded-2xl border border-slate-800 bg-slate-950 p-3 text-xs font-black uppercase tracking-widest text-slate-300 hover:text-white">
-          More style presets
-        </button>
+      </PanelSection>
+      <PanelSection title="Style tools">
+        {[
+          ['Full Website Theme', () => applyTheme('modern-dark')],
+          ['Color Palette', () => showToast('Use the color pickers above to update the live palette.')],
+          ['Font Pairing', () => applyTheme({ ...theme, fonts: { heading: 'Georgia', body: 'Inter' } })],
+          ['Button Style', () => updateThemeToken('buttonStyle', theme?.buttonStyle === 'outline' ? 'solid' : 'outline')],
+          ['Card Style', () => updateThemeToken('shadow', '0 18px 45px rgba(15, 23, 42, 0.14)')],
+          ['Border Radius Style', () => updateThemeToken('radius', theme?.radius === '6px' ? '18px' : '6px')],
+          ['Shadow Style', () => updateThemeToken('shadow', theme?.shadow ? '' : '0 28px 80px rgba(15, 23, 42, 0.22)')],
+          ['Spacing Presets', () => updateThemeToken('spacing', theme?.spacing === 'compact' ? 'comfortable' : 'compact')],
+          ['Light / Dark Mode', () => applyTheme(theme?.colors?.background === '#0f172a' ? 'clean-white' : 'modern-dark')],
+          ['Brand Kit', () => showToast('Brand kit placeholder saved. AI Brand Kit can generate structured values.')],
+          ['Glassmorphism Style', () => updateThemeToken('glass', true)],
+          ['Minimal Style', () => applyTheme('minimal-portfolio')],
+          ['Modern Style', () => applyTheme('modern-dark')],
+          ['Premium Style', () => applyTheme('startup-gradient')],
+        ].map(([label, action]) => (
+          <button key={label} type="button" onClick={action} className="w-full rounded-2xl border border-slate-800 bg-slate-950 p-3 text-left text-xs font-black uppercase tracking-widest text-slate-300 hover:text-white">
+            {label}
+          </button>
+        ))}
       </PanelSection>
     </PanelShell>
   );

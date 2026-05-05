@@ -1,14 +1,15 @@
-import React from 'react';
 import { useBuilderStore } from '../../../store/builderStore';
 import { isTextElement } from '../../../utils/renderHelpers';
 import { ColorInput, MiniButton, PropertyGroup, SelectInput, TextArea, TextInput } from './PropertyControls';
 
 export default function TextProperties() {
-  const { selectedElement, updateSelectedContent, updateSelectedStyles, rewriteSelectedText } = useBuilderStore();
-  if (!selectedElement || !isTextElement(selectedElement.type)) return null;
+  const { selectedElement, getSelectedNode, updateSelectedContent, updateSelectedStyles, rewriteSelectedText } = useBuilderStore();
+  const selectedNode = getSelectedNode;
+  const item = selectedNode || selectedElement;
+  if (!item || !isTextElement(item.type)) return null;
 
-  const content = selectedElement.content;
-  const styles = selectedElement.styles || {};
+  const content = item.content;
+  const styles = item.styles || {};
   const updateStyle = (key) => (value) => updateSelectedStyles({ [key]: value });
 
   return (
@@ -24,7 +25,7 @@ export default function TextProperties() {
       ) : (
         <TextArea label="Text content" value={content} onChange={updateSelectedContent} rows={4} />
       )}
-      <SelectInput label="Font family" value={styles.fontFamily || ''} onChange={updateStyle('fontFamily')} options={['Inter', 'Georgia', 'Arial', 'system-ui']} />
+      <SelectInput label="Font family" value={styles.fontFamily || ''} onChange={updateStyle('fontFamily')} options={['Inter', 'Georgia', 'Arial', 'system-ui', 'Roboto', 'Outfit', 'Poppins', 'Playfair Display', 'Montserrat', 'Lora']} />
       <div className="grid grid-cols-2 gap-2">
         <TextInput label="Font size" value={styles.fontSize} onChange={updateStyle('fontSize')} placeholder="18px" />
         <TextInput label="Weight" value={styles.fontWeight} onChange={updateStyle('fontWeight')} placeholder="700" />
@@ -34,9 +35,14 @@ export default function TextProperties() {
       <SelectInput label="Text align" value={styles.textAlign || 'left'} onChange={updateStyle('textAlign')} options={['left', 'center', 'right', 'justify']} />
       <ColorInput label="Text color" value={styles.color === 'inherit' ? '#0f172a' : styles.color} onChange={updateStyle('color')} />
       <SelectInput label="Transform" value={styles.textTransform || 'none'} onChange={updateStyle('textTransform')} options={['none', 'uppercase', 'capitalize', 'lowercase']} />
+      <SelectInput label="Decoration" value={styles.textDecoration || 'none'} onChange={updateStyle('textDecoration')} options={['none', 'underline', 'line-through', 'overline']} />
+      <SelectInput label="Font style" value={styles.fontStyle || 'normal'} onChange={updateStyle('fontStyle')} options={['normal', 'italic']} />
+      <TextInput label="Word spacing" value={styles.wordSpacing || ''} onChange={updateStyle('wordSpacing')} placeholder="normal" />
       <div className="grid grid-cols-2 gap-2">
         <MiniButton onClick={() => rewriteSelectedText('professional')}>AI Rewrite</MiniButton>
-        <MiniButton onClick={() => rewriteSelectedText('cta')}>AI Generate Text</MiniButton>
+        <MiniButton onClick={() => rewriteSelectedText('cta')}>AI CTA</MiniButton>
+        <MiniButton onClick={() => rewriteSelectedText('shorter')}>Make Shorter</MiniButton>
+        <MiniButton onClick={() => rewriteSelectedText('longer')}>Make Longer</MiniButton>
       </div>
     </PropertyGroup>
   );

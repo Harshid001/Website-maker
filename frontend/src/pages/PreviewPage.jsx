@@ -1,14 +1,16 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Rocket } from 'lucide-react';
 import DeviceSwitcher from '../components/builder/DeviceSwitcher';
-import WebsiteCanvas from '../components/builder/WebsiteCanvas';
+import PublishedWebsiteView from '../components/builder/PublishedWebsiteView';
 import { BuilderProvider, useBuilderStore } from '../store/builderStore';
+import { getDeviceWidth } from '../utils/renderHelpers';
 
 function PreviewInner() {
   const navigate = useNavigate();
   const { pageSlug } = useParams();
-  const { project, publishProject, switchPage } = useBuilderStore();
+  const { activeDevice, project, publishProject, switchPage } = useBuilderStore();
+  const width = getDeviceWidth(activeDevice);
 
   useEffect(() => {
     if (!pageSlug || !project?.pages?.length) return;
@@ -34,8 +36,10 @@ function PreviewInner() {
           Publish
         </button>
       </header>
-      <main className="min-h-0 flex-1 overflow-hidden">
-        <WebsiteCanvas readonly runtimeMode="preview" />
+      <main className="min-h-0 flex-1 overflow-auto bg-slate-200 p-6">
+        <div className="mx-auto min-h-full bg-white shadow-2xl transition-[width] duration-300" style={{ width, maxWidth: 'calc(100vw - 48px)' }}>
+          <PublishedWebsiteView device={activeDevice} />
+        </div>
       </main>
     </div>
   );

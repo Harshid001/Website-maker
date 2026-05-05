@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, GalleryHorizontal, Heading, Image, LayoutPanelTop, Link as LinkIcon, Minus, MousePointerClick, Square, Type, Video } from 'lucide-react';
 import { useBuilderStore } from '../../../store/builderStore';
 import { ActionButton, PanelSection, PanelShell } from './PanelShell';
@@ -18,23 +17,25 @@ const basic = [
 
 const advanced = [
   ['navbar', 'Navbar'],
+  ['footer', 'Footer'],
   ['hero', 'Hero Section'],
   ['services', 'Services Section'],
   ['pricing', 'Pricing Section'],
   ['testimonials', 'Testimonial Section'],
-  ['contact', 'Contact Form'],
-  ['form', 'Booking Form'],
+  ['contactForm', 'Contact Form'],
+  ['bookingForm', 'Booking Form'],
   ['productCard', 'Product Card'],
   ['gallery', 'Gallery'],
   ['faq', 'FAQ Section'],
-  ['map', 'Map Embed'],
-  ['button', 'WhatsApp Button'],
+  ['mapEmbed', 'Map Embed'],
+  ['whatsappButton', 'WhatsApp Button'],
   ['socialLinks', 'Social Links'],
-  ['card', 'Countdown Timer'],
-  ['gallery', 'Slider / Carousel'],
-  ['card', 'Blog Card'],
-  ['footer', 'Footer'],
+  ['countdown', 'Countdown Timer'],
+  ['slider', 'Slider / Carousel'],
+  ['blogCard', 'Blog Card'],
 ];
+
+const sectionInsertTypes = ['navbar', 'footer', 'hero', 'services', 'pricing', 'testimonials', 'faq'];
 
 const dragPayload = (dragType, value) => (event) => {
   event.dataTransfer.setData('application/shopcraft-builder', JSON.stringify(dragType === 'new-section' ? { dragType, sectionType: value } : { dragType, elementType: value }));
@@ -42,7 +43,7 @@ const dragPayload = (dragType, value) => (event) => {
 };
 
 export default function AddElementsPanel() {
-  const { addElement, addSection, showToast } = useBuilderStore();
+  const { addElement, addSection } = useBuilderStore();
 
   return (
     <PanelShell eyebrow="Insert" title="Add Elements">
@@ -63,11 +64,11 @@ export default function AddElementsPanel() {
             icon={label.includes('Gallery') || label.includes('Slider') ? GalleryHorizontal : LinkIcon}
             label={label}
             description="Click to add, or drag into the canvas."
-            onDragStart={dragPayload(['hero', 'services', 'pricing', 'testimonials', 'faq', 'footer'].includes(type) ? 'new-section' : 'new-element', type)}
-            onClick={() => (['hero', 'services', 'pricing', 'testimonials', 'faq', 'footer'].includes(type) ? addSection(type) : addElement(type))}
+            onDragStart={dragPayload(sectionInsertTypes.includes(type) ? 'new-section' : 'new-element', type)}
+            onClick={() => (sectionInsertTypes.includes(type) ? addSection(type) : addElement(type))}
           />
         ))}
-        <ActionButton icon={LinkIcon} label="HTML Embed" onClick={() => showToast('HTML embed placeholder inserted through Advanced Settings.')} />
+        <ActionButton icon={LinkIcon} label="HTML Embed" onClick={() => addElement('customHtml')} />
       </PanelSection>
     </PanelShell>
   );

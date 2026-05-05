@@ -1,4 +1,3 @@
-import React from 'react';
 import { useBuilderStore } from '../../store/builderStore';
 import AICreatePanel from './panels/AICreatePanel';
 import AddElementsPanel from './panels/AddElementsPanel';
@@ -17,29 +16,32 @@ import TutorialsPanel from './panels/TutorialsPanel';
 import SettingsPanel from './panels/SettingsPanel';
 import LayersPanel from './LayersPanel';
 import { PanelShell } from './panels/PanelShell';
+import { leftPanelTools } from '../../data/builderTools';
 
-const panelByTool = {
-  ai: AICreatePanel,
-  add: AddElementsPanel,
-  sections: SectionsPanel,
-  templates: TemplatesPanel,
-  theme: ThemePanel,
-  media: MediaPanel,
-  text: TextPanel,
-  components: ComponentsPanel,
-  pages: PagesPanel,
-  animation: AnimationPanel,
-  design2d: Design2DPanel,
-  elements3d: Elements3DPanel,
+const panelByName = {
+  AICreatePanel,
+  AddElementsPanel,
+  SectionsPanel,
+  TemplatesPanel,
+  ThemePanel,
+  MediaPanel,
+  TextPanel,
+  ComponentsPanel,
+  PagesPanel,
+  AnimationPanel,
+  Design2DPanel,
+  Visual3DPanel: Elements3DPanel,
   integrations: IntegrationsPanel,
-  tutorials: TutorialsPanel,
-  settings: SettingsPanel,
+  IntegrationsPanel,
+  TutorialsPanel,
+  SettingsPanel,
   layers: () => <PanelShell eyebrow="Structure" title="Layers"><LayersPanel /></PanelShell>,
 };
 
 export default function LeftToolPanel() {
   const { activeLeftTool } = useBuilderStore();
-  const Panel = panelByTool[activeLeftTool] || AICreatePanel;
+  const tool = leftPanelTools.find((item) => item.id === activeLeftTool);
+  const Panel = panelByName[tool?.panelComponent] || panelByName[activeLeftTool] || AICreatePanel;
 
   return (
     <aside className="w-[320px] shrink-0 border-r border-slate-800 bg-slate-900">

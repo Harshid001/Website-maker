@@ -19,7 +19,7 @@ export const getZoomScale = (zoomMode = '100', fitScale = 1) =>
   zoomMode === 'fit' ? fitScale : zoomValues[zoomMode] || 1;
 
 export const isTextElement = (type) =>
-  ['heading', 'paragraph', 'button', 'card', 'testimonialCard', 'pricingCard', 'productCard'].includes(type);
+  ['heading', 'paragraph', 'button', 'navLink', 'footerLink', 'whatsappButton', 'countdown', 'card', 'serviceCard', 'testimonialCard', 'pricingCard', 'productCard', 'blogCard'].includes(type);
 
 export const animationClassFor = (animation = {}) => {
   const type = animation.type || 'none';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { useBuilderStore } from '../../store/builderStore';
 import SelectionProperties from './properties/SelectionProperties';
@@ -11,11 +10,14 @@ import ButtonProperties from './properties/ButtonProperties';
 import SEOProperties from './properties/SEOProperties';
 import AnimationProperties from './properties/AnimationProperties';
 import ResponsiveProperties from './properties/ResponsiveProperties';
+import FormProperties from './properties/FormProperties';
+import EcommerceProperties from './properties/EcommerceProperties';
 import AdvancedProperties from './properties/AdvancedProperties';
 import AccessibilityProperties from './properties/AccessibilityProperties';
 import ExportCodeProperties from './properties/ExportCodeProperties';
 import InteractionProperties from './prototype/InteractionProperties';
 import MultiSelectionProperties from './properties/MultiSelectionProperties';
+import SectionSpecificProperties from './properties/SectionSpecificProperties';
 
 export default function RightPropertiesPanel() {
   const { builderMode, getSelectedNode, selectedNodeIds, selectedInteraction } = useBuilderStore();
@@ -50,6 +52,7 @@ export default function RightPropertiesPanel() {
 
       {node && !selectedInteraction && !isMultiSelect && (
         <>
+          <SectionSpecificProperties />
           <LayoutProperties />
           <TextProperties />
           <DesignProperties />
@@ -59,6 +62,8 @@ export default function RightPropertiesPanel() {
           <AnimationProperties />
           <BackgroundProperties />
           <ResponsiveProperties />
+          <FormProperties />
+          <EcommerceProperties />
           <AdvancedProperties />
           <AccessibilityProperties />
         </>

@@ -5,9 +5,17 @@
  * All functions accept a nodesMap { [id]: node } and return a new map (immutable).
  */
 
-import { createId, rekeyTree } from './ids';
+import { createId } from './ids';
 import { deepClone } from './deepClone';
-import { createNode, CONTAINER_NODE_TYPES, LAYOUT_MODES, NODE_TYPES } from '../data/nodeSchema';
+import {
+  createNode,
+  createPricingCard,
+  createProductCard,
+  createServiceCard,
+  createTestimonialCard,
+  LAYOUT_MODES,
+  NODE_TYPES,
+} from '../data/nodeSchema';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Queries (read-only, no mutation)
@@ -115,6 +123,39 @@ export const getPageRootNodes = (nodesMap, pageId) => {
  * @returns {object} { nodesMap, nodeId }
  */
 export const addNode = (nodesMap, parentId, nodeData, index = -1) => {
+  const type = nodeData.type || NODE_TYPES.CONTAINER;
+
+  const cardFactory = {
+    [NODE_TYPES.CARD]: (data) => createServiceCard({ ...data, type: NODE_TYPES.CARD }),
+    [NODE_TYPES.BLOG_CARD]: (data) => createServiceCard({ ...data, type: NODE_TYPES.BLOG_CARD, title: data.title || 'Article title', description: data.description || 'A short article summary for this blog card.', buttonText: data.buttonText || 'Read More' }),
+    [NODE_TYPES.SERVICE_CARD]: createServiceCard,
+    [NODE_TYPES.PRODUCT_CARD]: createProductCard,
+    [NODE_TYPES.TESTIMONIAL_CARD]: createTestimonialCard,
+    [NODE_TYPES.PRICING_CARD]: createPricingCard,
+  }[type];
+
+  if (cardFactory && !nodeData.children?.length) {
+    const bundle = cardFactory({ ...nodeData, parentId });
+    let next = { ...nodesMap };
+    for (const bundleNode of bundle.allNodes) {
+      next[bundleNode.id] = bundleNode;
+    }
+
+    if (parentId && next[parentId]) {
+      const parent = { ...next[parentId] };
+      const children = [...(parent.children || [])];
+      if (index >= 0 && index < children.length) {
+        children.splice(index, 0, bundle.parent.id);
+      } else {
+        children.push(bundle.parent.id);
+      }
+      parent.children = children;
+      next[parentId] = parent;
+    }
+
+    return { nodesMap: next, nodeId: bundle.parent.id };
+  }
+
   const node = nodeData.id && nodeData.type ? { ...createNode(nodeData.type, nodeData), ...nodeData } : createNode(nodeData.type || NODE_TYPES.CONTAINER, nodeData);
   node.parentId = parentId;
 
@@ -177,6 +218,7 @@ export const updateNode = (nodesMap, nodeId, patch) => {
     }
   }
 
+  updated.updatedAt = new Date().toISOString();
   return { ...nodesMap, [nodeId]: updated };
 };
 
@@ -689,9 +731,13 @@ export const migrateFromLegacy = (pages = []) => {
       const elementIds = [];
 
       for (const element of section.elements || []) {
-        const elementNode = migrateLegacyElement(element, section.id);
-        nodesMap[elementNode.id] = elementNode;
-        elementIds.push(elementNode.id);
+        const migrated = migrateLegacyElement(element, section.id);
+        const migratedNodes = migrated.allNodes || [migrated];
+        const rootNode = migrated.parent || migrated;
+        for (const elementNode of migratedNodes) {
+          nodesMap[elementNode.id] = elementNode;
+        }
+        elementIds.push(rootNode.id);
       }
 
       sectionNode.children = elementIds;
@@ -719,6 +765,11 @@ const mapLegacySectionType = (type) => {
     about: NODE_TYPES.SECTION,
     team: NODE_TYPES.SECTION,
     blog: NODE_TYPES.SECTION,
+    restaurantMenu: NODE_TYPES.SECTION,
+    portfolio: NODE_TYPES.SECTION,
+    ecommerceProduct: NODE_TYPES.SECTION,
+    booking: NODE_TYPES.SECTION,
+    newsletter: NODE_TYPES.SECTION,
     product: NODE_TYPES.SECTION,
     gallery: NODE_TYPES.SECTION,
     faq: NODE_TYPES.SECTION,
@@ -730,6 +781,60 @@ const mapLegacySectionType = (type) => {
 
 /** Convert a legacy element to a node */
 const migrateLegacyElement = (element, sectionId) => {
+  const contentObject = typeof element.content === 'object' && element.content !== null ? element.content : {};
+  const shared = {
+    id: element.id,
+    name: element.name || element.type || 'Element',
+    parentId: sectionId,
+    props: element.props || {},
+    styles: element.styles || {},
+    locked: element.locked || false,
+    hidden: element.hidden || false,
+    animation: element.animation || {},
+    responsive: element.responsive || {},
+  };
+
+  if (element.type === NODE_TYPES.SERVICE_CARD || element.type === 'card') {
+    return createServiceCard({
+      ...shared,
+      title: contentObject.title,
+      description: contentObject.body || contentObject.description,
+      buttonText: contentObject.buttonText,
+    });
+  }
+
+  if (element.type === NODE_TYPES.PRODUCT_CARD) {
+    return createProductCard({
+      ...shared,
+      title: contentObject.title,
+      price: contentObject.price,
+      description: contentObject.body || contentObject.description,
+      imageSrc: element.props?.src || contentObject.image,
+      imageAlt: element.props?.alt || contentObject.title,
+      buttonText: contentObject.buttonText,
+    });
+  }
+
+  if (element.type === NODE_TYPES.TESTIMONIAL_CARD) {
+    return createTestimonialCard({
+      ...shared,
+      quote: contentObject.quote || contentObject.body,
+      authorName: contentObject.author || contentObject.name,
+      authorRole: contentObject.role,
+      avatarSrc: element.props?.src || contentObject.avatar,
+    });
+  }
+
+  if (element.type === NODE_TYPES.PRICING_CARD) {
+    return createPricingCard({
+      ...shared,
+      planName: contentObject.title || contentObject.planName,
+      price: contentObject.price,
+      description: contentObject.body || contentObject.description,
+      buttonText: contentObject.buttonText,
+    });
+  }
+
   // Map old card content objects to appropriate node content
   let content = element.content;
   if (typeof content === 'object' && content !== null) {

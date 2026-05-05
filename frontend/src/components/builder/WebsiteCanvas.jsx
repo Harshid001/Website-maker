@@ -16,6 +16,8 @@ export default function WebsiteCanvas({ readonly = false, runtimeMode = 'editor'
     clearSelection,
     selectNodes,
     addNodeToMap,
+    addSection,
+    addElement,
     moveNodeInMap,
     addPage,
     setActiveLeftTool,
@@ -53,6 +55,10 @@ export default function WebsiteCanvas({ readonly = false, runtimeMode = 'editor'
 
     if (activeData.dragType === 'new-section' || activeData.dragType === 'new-element') {
       const type = activeData.sectionType || activeData.elementType;
+      if (activeData.dragType === 'new-section') {
+        addSection(type);
+        return;
+      }
       if (overData.type === 'node') {
         const overNode = overData.node;
         addNodeToMap(overNode.id, { type });
@@ -75,7 +81,8 @@ export default function WebsiteCanvas({ readonly = false, runtimeMode = 'editor'
     try {
       const data = JSON.parse(raw);
       const type = data.sectionType || data.elementType;
-      if (type) addNodeToMap(null, { type }); // add to root
+      if (type && data.dragType === 'new-section') addSection(type);
+      else if (type) addElement(type);
     } catch {
       showToast('Could not read dropped builder item.', 'error');
     }
