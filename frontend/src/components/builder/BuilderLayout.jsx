@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import BuilderTopBar from './BuilderTopBar';
 import LeftSidebar from './LeftSidebar';
 import LeftToolPanel from './LeftToolPanel';
@@ -9,10 +9,12 @@ import { useBuilderStore } from '../../store/builderStore';
 import InteractionModal from './prototype/InteractionModal';
 import ContextMenu from './ContextMenu';
 import BottomCanvasToolbar from './BottomCanvasToolbar';
+import ExportPanel, { PreviewModal } from '../ExportPanel';
 
 export default function BuilderLayout() {
   const {
     project,
+    nodesMap,
     toast,
     leftPanelCollapsed,
     rightPanelCollapsed,
@@ -36,7 +38,13 @@ export default function BuilderLayout() {
     zoomOut,
     resetZoom,
     fitToScreen,
+    showToast,
   } = useBuilderStore();
+  const [previewHTML, setPreviewHTML] = useState('');
+  const exportBuilderState = useMemo(
+    () => (project ? { ...project, nodesMap } : null),
+    [nodesMap, project],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -205,6 +213,11 @@ export default function BuilderLayout() {
             {canvasView === 'routing' ? <RoutingMapView /> : <WebsiteCanvas />}
           </div>
           <BottomCanvasToolbar />
+          <ExportPanel
+            builderState={exportBuilderState}
+            onPreview={setPreviewHTML}
+            onStatus={showToast}
+          />
         </main>
         {!fullscreenCanvas && !rightPanelCollapsed && <RightPropertiesPanel />}
       </div>
@@ -222,6 +235,7 @@ export default function BuilderLayout() {
       )}
       <InteractionModal />
       <ContextMenu />
+      <PreviewModal html={previewHTML} onClose={() => setPreviewHTML('')} />
     </div>
   );
 }

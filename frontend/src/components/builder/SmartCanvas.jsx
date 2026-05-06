@@ -115,6 +115,7 @@ export default function SmartCanvas({ readonly = false }) {
   const canvasRef = useRef(null);
   const activeDragRef = useRef(null);
   const pointerDragRef = useRef(null);
+  const dropLockRef = useRef(false);
   const [draggingFromPanel, setDraggingFromPanel] = useState(false);
   const [selectionBox, setSelectionBox] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -261,7 +262,9 @@ export default function SmartCanvas({ readonly = false }) {
     const type = payloadType(payload);
     if (!zone || !previewRect) return false;
 
-    if (payload.dragType === 'new-section' || SECTION_LEVEL_TYPES.has(type)) {
+    const isMovingExisting = Boolean(payload.nodeId && payload.source !== 'native' && payload.source !== 'library' && payload.source !== 'insert');
+
+    if (!isMovingExisting && (payload.dragType === 'new-section' || SECTION_LEVEL_TYPES.has(type))) {
       addSection(type);
       return true;
     }
@@ -319,7 +322,7 @@ export default function SmartCanvas({ readonly = false }) {
       return true;
     }
 
-    if (payload.nodeId) {
+    if (isMovingExisting) {
       placeNodeInMap(payload.nodeId, zone.sectionId || zone.id, { ...layout, responsive });
       selectNodes([payload.nodeId]);
       if (smartPlacement.warning) showToast(smartPlacement.warning);
@@ -557,6 +560,11 @@ export default function SmartCanvas({ readonly = false }) {
   const handleNativeDrop = (event) => {
     if (readonly) return;
     event.preventDefault();
+    event.stopPropagation();
+
+    if (dropLockRef.current) return;
+    dropLockRef.current = true;
+
     setDraggingFromPanel(false);
     const payload = activeDragRef.current || readBuilderPayload(event);
     if (typeof window !== 'undefined') window.__shopcraftBuilderDragPayload = null;
@@ -566,13 +574,18 @@ export default function SmartCanvas({ readonly = false }) {
       : getPlacement();
     activeDragRef.current = null;
     cancelSmartDrag();
+    
     if (!payload) {
       showToast('Could not read dropped builder item.', 'error');
+      setTimeout(() => { dropLockRef.current = false; }, 0);
       return;
     }
+    
     if (!commitSmartPlacement(smartPlacement, payload)) {
       showToast(smartPlacement?.message || 'No valid placement zone found.', 'error');
     }
+
+    setTimeout(() => { dropLockRef.current = false; }, 0);
   };
 
   const allowPanelDrop = (event) => {
